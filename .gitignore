@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pkg.tar.zst
+*.pkg.tar.zst.sig
+*.db
+*.db.tar.gz
+*.files
+*.files.tar.gz
