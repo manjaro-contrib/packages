@@ -1,0 +1,41 @@
+name: repo-remove
+
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: Comma-separated package names to remove
+        required: true
+      branches:
+        description: Comma-separated branches to remove from
+        required: true
+        default: unstable,testing,stable
+      arches:
+        description: Comma-separated architectures
+        required: true
+        default: x86_64
+
+jobs:
+  remove:
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: repo-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: install repo tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pacman-package-manager
+          pip install boto3
+      - name: remove from R2
+        env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python3 scripts/repo_remove.py \
+            --packages "${{ inputs.packages }}" \
+            --branches "${{ inputs.branches }}" \
+            --arches "${{ inputs.arches }}"
