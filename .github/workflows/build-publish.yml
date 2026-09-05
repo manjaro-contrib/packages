@@ -49,11 +49,28 @@ jobs:
         package: ${{ fromJSON(needs.check.outputs.pending) }}
     steps:
       - name: install build tooling
+        env:
+          GPG_KEYID: ${{ vars.GPG_KEYID }}
         run: |
-          pacman -Syu --noconfirm --needed base-devel git sudo python gnupg
+          pacman -Syu --noconfirm --needed base-devel git sudo python gnupg curl
           # the image may already ship a builder account
           id -u builder >/dev/null 2>&1 || useradd -m builder
           echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
+      - name: enable the contrib repo for dependency resolution
+        # packages here depend on each other - flashfocus needs
+        # python-xpybutil - and those exist in no upstream manjaro repo
+        env:
+          GPG_KEYID: ${{ vars.GPG_KEYID }}
+          KEY_URL: https://raw.githubusercontent.com/${{ github.repository }}/main/gpg-public-key.asc
+        run: |
+          curl -fsSL "$KEY_URL" -o /tmp/contrib.asc
+          pacman-key --init
+          pacman-key --add /tmp/contrib.asc
+          pacman-key --lsign-key "$GPG_KEYID"
+          # shellcheck disable=SC2016  # pacman itself expands $arch
+          printf '\n[manjaro-contrib]\nSigLevel = Required DatabaseRequired\nServer = %s/%s/$arch\n' \
+            "$REPO_URL" "$BRANCH" >> /etc/pacman.conf
+          pacman -Sy --noconfirm
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: builder
