@@ -50,7 +50,7 @@ jobs:
     steps:
       - name: install build tooling
         run: |
-          pacman -Syu --noconfirm --needed base-devel git sudo python
+          pacman -Syu --noconfirm --needed base-devel git sudo python gnupg
           # the image may already ship a builder account
           id -u builder >/dev/null 2>&1 || useradd -m builder
           echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
@@ -78,12 +78,26 @@ jobs:
           ref: ${{ matrix.package.default_branch }}
           token: ${{ secrets.DISPATCH_TOKEN || github.token }}
           path: pkg
+      - name: import signing key
+        if: ${{ !matrix.package.reusable }}
+        env:
+          GPG_SECRET_BASE64: ${{ secrets.GPG_SECRET_BASE64 }}
+          GPG_KEYID: ${{ vars.GPG_KEYID }}
+        run: |
+          # makepkg signs as the unprivileged builder, so the key has to
+          # land in that user's keyring, not root's
+          install -d -o builder -g builder /home/builder/.gnupg
+          sudo -u builder env \
+            GPG_SECRET_BASE64="$GPG_SECRET_BASE64" GPG_KEYID="$GPG_KEYID" \
+            builder/scripts/import_key.sh
       - name: build
         if: ${{ !matrix.package.reusable }}
+        env:
+          GPG_KEYID: ${{ vars.GPG_KEYID }}
         run: |
           chown -R builder:builder pkg
           cd pkg
-          sudo -u builder makepkg -s --noconfirm
+          sudo -u builder makepkg -s --noconfirm --sign --key "$GPG_KEYID"
       - name: store build as release
         # the bucket only keeps the current version, so the release is the
         # only durable record of this binary
@@ -99,7 +113,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pkg-${{ matrix.package.pkgbase }}
-          path: pkg/*.pkg.tar.zst
+          path: |
+            pkg/*.pkg.tar.zst
+            pkg/*.pkg.tar.zst.sig
           retention-days: 1
           if-no-files-found: error
 
@@ -124,9 +140,15 @@ jobs:
           path: packages
           merge-multiple: true
       - name: install repo tooling
-        run: pacman -Syu --noconfirm --needed pacman-contrib python python-boto3
+        run: pacman -Syu --noconfirm --needed pacman-contrib python python-boto3 gnupg
+      - name: import signing key
+        env:
+          GPG_SECRET_BASE64: ${{ secrets.GPG_SECRET_BASE64 }}
+          GPG_KEYID: ${{ vars.GPG_KEYID }}
+        run: scripts/import_key.sh
       - name: publish to R2
         env:
+          GPG_KEYID: ${{ vars.GPG_KEYID }}
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}

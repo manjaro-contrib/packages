@@ -117,16 +117,21 @@ def main() -> int:
             download(s3, bucket, dst_prefix + name, path)
             pkg_paths.append(path)
 
-        subprocess.run(["repo-add", db_file, *pkg_paths], check=True)
+        repo_add = ["repo-add", db_file, *pkg_paths]
+        key = os.environ.get("GPG_KEYID")
+        if key:
+            repo_add[1:1] = ["--sign", "--key", key]
+        subprocess.run(repo_add, check=True)
 
         for suffix in DB_SUFFIXES:
-            local = os.path.join(workdir, f"{args.db_name}{suffix}")
-            # repo-add writes .db/.files as symlinks; upload the real bytes
-            real = os.path.realpath(local)
-            if not os.path.exists(real):
-                continue
-            s3.upload_file(real, bucket, dst_prefix + f"{args.db_name}{suffix}")
-            log(f"uploaded {args.db_name}{suffix}")
+            for name in (f"{args.db_name}{suffix}", f"{args.db_name}{suffix}.sig"):
+                local = os.path.join(workdir, name)
+                # repo-add writes .db/.files as symlinks; upload the real bytes
+                real = os.path.realpath(local)
+                if not os.path.exists(real):
+                    continue
+                s3.upload_file(real, bucket, dst_prefix + name)
+                log(f"uploaded {name}")
 
     write_state(s3, bucket, log)
 

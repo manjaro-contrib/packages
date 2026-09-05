@@ -106,7 +106,12 @@ def main() -> int:
                     log(f"{branch}/{arch}: no database, skipping")
                     continue
 
-                subprocess.run(["repo-remove", db_file, *names], check=False)
+                repo_remove = ["repo-remove", db_file, *names]
+                key = os.environ.get("GPG_KEYID")
+                if key:
+                    # the rewritten database needs a fresh signature
+                    repo_remove[1:1] = ["--sign", "--key", key]
+                subprocess.run(repo_remove, check=False)
 
                 for name in names:
                     for key in artifacts_for(s3, bucket, prefix, name):
@@ -115,11 +120,15 @@ def main() -> int:
                         removed_any = True
 
                 for suffix in DB_SUFFIXES:
-                    local = os.path.join(workdir, f"{args.db_name}{suffix}")
-                    real = os.path.realpath(local)
-                    if not os.path.exists(real):
-                        continue
-                    s3.upload_file(real, bucket, prefix + f"{args.db_name}{suffix}")
+                    for name in (
+                        f"{args.db_name}{suffix}",
+                        f"{args.db_name}{suffix}.sig",
+                    ):
+                        local = os.path.join(workdir, name)
+                        real = os.path.realpath(local)
+                        if not os.path.exists(real):
+                            continue
+                        s3.upload_file(real, bucket, prefix + name)
                 log(f"{branch}/{arch}: database updated")
 
     if not removed_any:

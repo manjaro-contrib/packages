@@ -77,7 +77,13 @@ def main() -> int:
             raise
         log("no database yet, repo-add will create one")
 
-    subprocess.run(["repo-add", db_file, *packages], check=True)
+    repo_add = ["repo-add", db_file, *packages]
+    key = os.environ.get("GPG_KEYID")
+    if key:
+        # --sign writes manjaro-contrib.db.sig; without it a signed package
+        # set still leaves the package list itself forgeable
+        repo_add[1:1] = ["--sign", "--key", key]
+    subprocess.run(repo_add, check=True)
 
     for pkg in packages:
         s3.upload_file(pkg, bucket, prefix + os.path.basename(pkg))
@@ -89,13 +95,14 @@ def main() -> int:
     prune_superseded(s3, bucket, prefix, [os.path.basename(p) for p in packages])
 
     for suffix in DB_SUFFIXES:
-        local = os.path.join(args.pkg_dir, f"{args.db_name}{suffix}")
-        # repo-add writes .db/.files as symlinks; upload the real bytes
-        real = os.path.realpath(local)
-        if not os.path.exists(real):
-            continue
-        s3.upload_file(real, bucket, prefix + f"{args.db_name}{suffix}")
-        log(f"uploaded {args.db_name}{suffix}")
+        for name in (f"{args.db_name}{suffix}", f"{args.db_name}{suffix}.sig"):
+            local = os.path.join(args.pkg_dir, name)
+            # repo-add writes .db/.files as symlinks; upload the real bytes
+            real = os.path.realpath(local)
+            if not os.path.exists(real):
+                continue
+            s3.upload_file(real, bucket, prefix + name)
+            log(f"uploaded {name}")
 
     write_state(s3, bucket, log)
 

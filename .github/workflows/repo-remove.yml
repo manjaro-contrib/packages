@@ -26,13 +26,19 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: install repo tooling
-        run: pacman -Syu --noconfirm --needed pacman-contrib python python-boto3
+        run: pacman -Syu --noconfirm --needed pacman-contrib python python-boto3 gnupg
+      - name: import signing key
+        env:
+          GPG_SECRET_BASE64: ${{ secrets.GPG_SECRET_BASE64 }}
+          GPG_KEYID: ${{ vars.GPG_KEYID }}
+        run: scripts/import_key.sh
       - name: remove from R2
         env:
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          GPG_KEYID: ${{ vars.GPG_KEYID }}
         run: |
           python3 scripts/repo_remove.py \
             --packages "${{ inputs.packages }}" \

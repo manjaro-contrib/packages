@@ -1,6 +1,10 @@
 .env
 *.swp
 __pycache__/
+# signing key material — never commit
+.gnupg-tmp/
+gpg-signing-key.asc
+gpg-signing-key.b64
 *.pkg.tar.zst
 *.pkg.tar.zst.sig
 *.db
