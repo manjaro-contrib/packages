@@ -16,6 +16,7 @@ import sys
 import boto3
 from botocore.exceptions import ClientError
 from repo_remove import artifacts_for, pkgname_of
+from repo_state import write_state
 
 DB_SUFFIXES = [".db", ".db.tar.gz", ".files", ".files.tar.gz"]
 
@@ -95,6 +96,8 @@ def main() -> int:
             continue
         s3.upload_file(real, bucket, prefix + f"{args.db_name}{suffix}")
         log(f"uploaded {args.db_name}{suffix}")
+
+    write_state(s3, bucket, log)
 
     log(f"published {len(packages)} package(s) to {args.branch}")
     return 0

@@ -14,6 +14,7 @@ import tempfile
 
 import boto3
 from botocore.exceptions import ClientError
+from repo_state import write_state
 
 DB_SUFFIXES = [".db", ".db.tar.gz", ".files", ".files.tar.gz"]
 
@@ -124,6 +125,8 @@ def main() -> int:
     if not removed_any:
         log("no matching packages found in any branch")
         return 1
+
+    write_state(s3, bucket, log)
     return 0
 
 

@@ -14,6 +14,7 @@ import tempfile
 
 import boto3
 from botocore.exceptions import ClientError
+from repo_state import write_state
 
 DB_SUFFIXES = [".db", ".db.tar.gz", ".files", ".files.tar.gz"]
 
@@ -126,6 +127,8 @@ def main() -> int:
                 continue
             s3.upload_file(real, bucket, dst_prefix + f"{args.db_name}{suffix}")
             log(f"uploaded {args.db_name}{suffix}")
+
+    write_state(s3, bucket, log)
 
     log(f"promoted {len(copied)} package(s) to {args.target_branch}")
     return 0
