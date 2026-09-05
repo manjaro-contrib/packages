@@ -3,6 +3,8 @@
 
 Stateless: the desired state is each repo's PKGBUILD on its default branch,
 the actual state is whatever artifacts exist under the branch prefix on R2.
+Packages already released on their own repo are marked reusable so the
+pipeline can republish the stored binary instead of rebuilding it.
 Emits a JSON build list on stdout; everything else goes to stderr.
 """
 
@@ -16,6 +18,8 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
+
+from release_store import get_release, has_assets
 
 TOPIC = "manjaro-contrib-pkg"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -89,10 +93,13 @@ def parse_pkgbuild(content: str, workdir: str) -> dict | None:
     return fields
 
 
-def artifact_names(fields: dict, target_arch: str) -> list[str]:
+def full_version(fields: dict) -> str:
     version = f"{fields['pkgver']}-{fields['pkgrel']}"
-    if fields.get("epoch"):
-        version = f"{fields['epoch']}:{version}"
+    return f"{fields['epoch']}:{version}" if fields.get("epoch") else version
+
+
+def artifact_names(fields: dict, target_arch: str) -> list[str]:
+    version = full_version(fields)
     # 'any' packages keep their arch suffix but live in the arch-specific dir
     arch = "any" if "any" in fields["arch"] else target_arch
     return [
@@ -155,21 +162,29 @@ def main() -> int:
             fields = parse_pkgbuild(content, workdir)
         if fields is None:
             continue
+        version = full_version(fields)
+        artifacts = artifact_names(fields, args.arch)
         missing = [
             name
-            for name in artifact_names(fields, args.arch)
+            for name in artifacts
             if not exists_on_r2(args.repo_url, args.branch, args.arch, name)
         ]
         if not missing:
             log("  up to date")
             continue
-        log(f"  needs build: {', '.join(missing)}")
+        # A prior build of this exact version is republishable as-is; only
+        # the full artifact set counts, a partial release must rebuild.
+        release = get_release(repo["full_name"], version, token)
+        reusable = has_assets(release, artifacts)
+        log(f"  needs {'release reuse' if reusable else 'build'}: {', '.join(missing)}")
         pending.append(
             {
                 "repo": repo["full_name"],
                 "default_branch": repo["default_branch"],
                 "pkgbase": fields["pkgbase"],
-                "artifacts": missing,
+                "version": version,
+                "artifacts": artifacts,
+                "reusable": reusable,
             }
         )
 

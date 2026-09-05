@@ -50,11 +50,28 @@ jobs:
     steps:
       - name: install build tooling
         run: |
-          pacman -Syu --noconfirm --needed base-devel git sudo
+          pacman -Syu --noconfirm --needed base-devel git sudo python
           # the image may already ship a builder account
           id -u builder >/dev/null 2>&1 || useradd -m builder
           echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: builder
+      - name: reuse released build
+        # this exact version was built before; republishing the stored
+        # binary keeps the repo byte-identical and skips a recompile
+        if: matrix.package.reusable
+        env:
+          GITHUB_TOKEN: ${{ secrets.DISPATCH_TOKEN || github.token }}
+        run: |
+          mkdir -p pkg
+          python3 builder/scripts/release_store.py download \
+            --repo "${{ matrix.package.repo }}" \
+            --version "${{ matrix.package.version }}" \
+            --artifacts "${{ join(matrix.package.artifacts, ',') }}" \
+            --pkg-dir pkg
       - name: checkout package source
+        if: ${{ !matrix.package.reusable }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ matrix.package.repo }}
@@ -62,10 +79,22 @@ jobs:
           token: ${{ secrets.DISPATCH_TOKEN || github.token }}
           path: pkg
       - name: build
+        if: ${{ !matrix.package.reusable }}
         run: |
           chown -R builder:builder pkg
           cd pkg
           sudo -u builder makepkg -s --noconfirm
+      - name: store build as release
+        # the bucket only keeps the current version, so the release is the
+        # only durable record of this binary
+        if: ${{ !matrix.package.reusable }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.DISPATCH_TOKEN || github.token }}
+        run: |
+          python3 builder/scripts/release_store.py upload \
+            --repo "${{ matrix.package.repo }}" \
+            --version "${{ matrix.package.version }}" \
+            --pkg-dir pkg
       - name: upload package artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
