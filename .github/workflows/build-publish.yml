@@ -107,12 +107,23 @@ jobs:
           sudo -u builder env \
             GPG_SECRET_BASE64="$GPG_SECRET_BASE64" GPG_KEYID="$GPG_KEYID" \
             builder/scripts/import_key.sh
+      - name: import upstream source keys
+        # PKGBUILDs that verify a release signature need the author's key in
+        # the builder keyring, or makepkg aborts before building
+        if: ${{ !matrix.package.reusable }}
+        run: |
+          chown -R builder:builder pkg
+          keys=$(sed -n "s/^[[:space:]]*validpgpkeys=(//p; /validpgpkeys=(/,/)/p" pkg/PKGBUILD |
+            grep -oE "[0-9A-Fa-f]{40}" || true)
+          for key in $keys; do
+            sudo -u builder gpg --keyserver keyserver.ubuntu.com --recv-keys "$key" ||
+              echo "could not fetch $key; makepkg will report the failure"
+          done
       - name: build
         if: ${{ !matrix.package.reusable }}
         env:
           GPG_KEYID: ${{ vars.GPG_KEYID }}
         run: |
-          chown -R builder:builder pkg
           cd pkg
           sudo -u builder makepkg -s --noconfirm --sign --key "$GPG_KEYID"
       - name: store build as release
