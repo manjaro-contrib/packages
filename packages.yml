@@ -1,5 +1,4 @@
 packages:
-  # Dummy packages for testing
-  dummy-pkg:
-    upstream: https://aur.archlinux.org/dummy-pkg.git
+  phinger-cursors:
+    upstream: https://aur.archlinux.org/phinger-cursors.git
     maintainers: ["boredland"]
