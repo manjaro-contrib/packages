@@ -2,4 +2,4 @@ packages:
   # Dummy packages for testing
   dummy-pkg:
     upstream: https://aur.archlinux.org/dummy-pkg.git
-    maintainers: ["jonass"]
+    maintainers: ["boredland"]
