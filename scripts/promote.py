@@ -4,6 +4,9 @@
 Copies .pkg.tar.zst objects (and their .sig if present) from the source
 branch prefix to the target prefix without egress, then rebuilds the target
 branch's pacman database locally and re-uploads it.
+
+--dry-run resolves and classifies every package against the target without
+writing anything, which is the only safe way to inspect a full ALL sync.
 """
 
 import argparse
@@ -14,6 +17,7 @@ import tempfile
 
 import boto3
 from botocore.exceptions import ClientError
+from repo_remove import pkgname_of
 from repo_state import write_state
 
 DB_SUFFIXES = [".db", ".db.tar.gz", ".files", ".files.tar.gz"]
@@ -66,6 +70,77 @@ def download(s3, bucket: str, key: str, dest: str) -> bool:
         raise
 
 
+def object_etag(s3, bucket: str, key: str) -> str | None:
+    try:
+        return s3.head_object(Bucket=bucket, Key=key)["ETag"].strip('"')
+    except ClientError as e:
+        if e.response["Error"]["Code"] in ("NoSuchKey", "404"):
+            return None
+        raise
+
+
+def plan_promotion(
+    s3, bucket: str, src_prefix: str, dst_prefix: str, names: list[str]
+) -> list[dict]:
+    """Classify what promoting each name would do to the target branch.
+
+    Resolves against live object state so the plan reflects exactly what a
+    real run would perform: missing sources abort, identical objects are
+    no-ops, and an existing other version is reported as a replacement.
+    """
+    existing = {}
+    for key in list_packages(s3, bucket, dst_prefix):
+        name = pkgname_of(key)
+        if name:
+            existing.setdefault(name, []).append(key)
+
+    plan = []
+    for name in names:
+        src_etag = object_etag(s3, bucket, src_prefix + name)
+        if src_etag is None:
+            plan.append({"name": name, "action": "missing", "detail": ""})
+            continue
+        dst_etag = object_etag(s3, bucket, dst_prefix + name)
+        if dst_etag == src_etag:
+            plan.append({"name": name, "action": "identical", "detail": ""})
+            continue
+        pkg = pkgname_of(name)
+        superseded = sorted(k for k in existing.get(pkg, []) if k != name)
+        if dst_etag is not None:
+            action, detail = "overwrite", "same filename, different bytes"
+        elif superseded:
+            action, detail = "replace", ", ".join(superseded)
+        else:
+            action, detail = "new", ""
+        plan.append({"name": name, "action": action, "detail": detail})
+    return plan
+
+
+def report_plan(plan: list[dict], source: str, target: str) -> int:
+    order = ["new", "replace", "overwrite", "identical", "missing"]
+    for action in order:
+        rows = [p for p in plan if p["action"] == action]
+        if not rows:
+            continue
+        log(f"{action} ({len(rows)}):")
+        for row in rows:
+            suffix = f"  <- supersedes {row['detail']}" if row["detail"] else ""
+            log(f"  {row['name']}{suffix}")
+
+    missing = [p for p in plan if p["action"] == "missing"]
+    changing = [p for p in plan if p["action"] in ("new", "replace", "overwrite")]
+    log("")
+    log(f"would promote {len(changing)} package(s) {source} -> {target}")
+    if any(p["action"] == "replace" for p in plan):
+        # promote only adds; repo-add drops the old entry from the database
+        # but the superseded file itself stays in the bucket
+        log("note: superseded files remain in the bucket, only the db entry changes")
+    if missing:
+        log(f"ERROR: {len(missing)} package(s) missing in {source}; a real run aborts")
+        return 1
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-branch", required=True)
@@ -77,6 +152,11 @@ def main() -> int:
     )
     parser.add_argument("--arch", default="x86_64")
     parser.add_argument("--db-name", default="manjaro-contrib")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report what would change without writing to the bucket",
+    )
     args = parser.parse_args()
 
     if args.source_branch == args.target_branch:
@@ -95,6 +175,10 @@ def main() -> int:
     if not names:
         log("nothing to promote")
         return 1
+
+    if args.dry_run:
+        plan = plan_promotion(s3, bucket, src_prefix, dst_prefix, names)
+        return report_plan(plan, args.source_branch, args.target_branch)
 
     copied = []
     for name in names:

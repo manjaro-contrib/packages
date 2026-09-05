@@ -14,6 +14,10 @@ on:
       packages:
         description: Comma-separated package filenames, or ALL
         required: true
+      dry_run:
+        description: Report what would change without writing anything
+        type: boolean
+        default: false
 
 env:
   ARCH: x86_64
@@ -31,6 +35,8 @@ jobs:
       - name: install repo tooling
         run: pacman -Syu --noconfirm --needed pacman-contrib python python-boto3 gnupg
       - name: import signing key
+        # a dry run writes nothing, so it never needs the key
+        if: ${{ !inputs.dry_run }}
         env:
           GPG_SECRET_BASE64: ${{ secrets.GPG_SECRET_BASE64 }}
           GPG_KEYID: ${{ vars.GPG_KEYID }}
@@ -47,4 +53,5 @@ jobs:
             --source-branch "${{ inputs.source_branch }}" \
             --target-branch "${{ inputs.target_branch }}" \
             --packages "${{ inputs.packages }}" \
-            --arch "$ARCH"
+            --arch "$ARCH" \
+            ${{ inputs.dry_run && '--dry-run' || '' }}
