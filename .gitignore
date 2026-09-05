@@ -1,6 +1,7 @@
 .env
 *.swp
 __pycache__/
+.wrangler/
 # signing key material — never commit
 .gnupg-tmp/
 gpg-signing-key.asc
