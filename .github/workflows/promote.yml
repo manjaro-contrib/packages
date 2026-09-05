@@ -4,13 +4,21 @@ on:
   workflow_dispatch:
     inputs:
       source_branch:
-        description: Source branch (e.g. unstable)
+        description: Source branch
         required: true
         default: unstable
+        type: choice
+        options:
+          - unstable
+          - testing
       target_branch:
-        description: Target branch (e.g. testing)
+        description: Target branch (must follow unstable -> testing -> stable)
         required: true
         default: testing
+        type: choice
+        options:
+          - testing
+          - stable
       packages:
         description: Comma-separated package filenames, or ALL
         required: true

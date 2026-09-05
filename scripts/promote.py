@@ -21,6 +21,10 @@ from repo_remove import pkgname_of
 from repo_state import write_state
 
 DB_SUFFIXES = [".db", ".db.tar.gz", ".files", ".files.tar.gz"]
+# Manjaro's lifecycle flows one way: a package must age through each branch.
+# Promoting backwards, or skipping a stage, would put binaries in stable
+# that no one ran in testing.
+FLOW = {"testing": "unstable", "stable": "testing"}
 
 
 def log(msg: str) -> None:
@@ -159,8 +163,18 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if args.source_branch == args.target_branch:
-        log("source and target branch must differ")
+    expected = FLOW.get(args.target_branch)
+    if expected is None:
+        log(
+            f"{args.target_branch} is not a promotion target; "
+            f"valid targets: {', '.join(sorted(FLOW))}"
+        )
+        return 1
+    if args.source_branch != expected:
+        log(
+            f"{args.source_branch} -> {args.target_branch} is not a valid "
+            f"promotion; {args.target_branch} is promoted from {expected}"
+        )
         return 1
 
     bucket = os.environ["R2_BUCKET"]

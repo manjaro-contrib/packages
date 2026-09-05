@@ -18,12 +18,10 @@ import urllib.error
 import urllib.request
 
 import boto3
-from promote import list_packages, plan_promotion
+from promote import FLOW, list_packages, plan_promotion
 
 API = "https://api.github.com"
 LABEL = "promotion-backlog"
-# each branch inherits from the one before it, mirroring manjaro's flow
-FLOW = {"testing": "unstable", "stable": "testing"}
 
 
 def log(msg: str) -> None:
