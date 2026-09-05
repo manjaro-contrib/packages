@@ -1,0 +1,18 @@
+name: update-upstreams
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: sync packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.DISPATCH_TOKEN || github.token }}
+        run: |
+          pip install pyyaml
+          python3 scripts/track_upstreams.py --org "${{ github.repository_owner }}"

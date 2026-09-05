@@ -1,0 +1,105 @@
+name: build-publish
+
+on:
+  schedule:
+    - cron: '15 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: restrict to a single package repository name
+        required: false
+  repository_dispatch:
+    types: [package_update]
+
+env:
+  REPO_URL: ${{ vars.REPO_URL }}
+  BRANCH: unstable
+  ARCH: x86_64
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    outputs:
+      pending: ${{ steps.check.outputs.pending }}
+      has_pending: ${{ steps.check.outputs.has_pending }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.DISPATCH_TOKEN || github.token }}
+          ONLY_REPO: ${{ github.event.client_payload.repo || inputs.repo }}
+        run: |
+          args=(--org "${{ github.repository_owner }}" --repo-url "$REPO_URL" --branch "$BRANCH" --arch "$ARCH")
+          [ -n "$ONLY_REPO" ] && args+=(--only-repo "$ONLY_REPO")
+          pending=$(python3 scripts/check_updates.py "${args[@]}")
+          echo "pending=$pending" >> "$GITHUB_OUTPUT"
+          echo "has_pending=$(jq 'length > 0' <<<"$pending")" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: check
+    if: needs.check.outputs.has_pending == 'true'
+    runs-on: ubuntu-24.04
+    container:
+      image: manjarolinux/base:latest
+      # makepkg refuses to run as root; options give the unprivileged user sudo
+      options: --security-opt seccomp=unconfined
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(needs.check.outputs.pending) }}
+    steps:
+      - name: install build tooling
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git sudo
+          useradd -m builder
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
+      - name: checkout package source
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.package.repo }}
+          ref: ${{ matrix.package.default_branch }}
+          token: ${{ secrets.DISPATCH_TOKEN || github.token }}
+          path: pkg
+      - name: build
+        run: |
+          chown -R builder:builder pkg
+          cd pkg
+          sudo -u builder makepkg -s --noconfirm
+      - name: upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkg-${{ matrix.package.pkgbase }}
+          path: pkg/*.pkg.tar.zst
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    needs: [check, build]
+    # needs.build.result is 'failure' if ANY matrix leg failed; run anyway so
+    # partial successes still publish. publish.py fails if nothing was built.
+    if: always() && needs.check.outputs.has_pending == 'true' && needs.build.result != 'cancelled' && needs.build.result != 'skipped'
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: repo-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: download built packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: pkg-*
+          path: packages
+          merge-multiple: true
+      - name: install repo tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pacman-package-manager
+          pip install boto3
+      - name: publish to R2
+        env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python3 scripts/publish.py --pkg-dir packages --branch "$BRANCH" --arch "$ARCH"

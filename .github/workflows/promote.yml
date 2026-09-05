@@ -1,0 +1,45 @@
+name: promote
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: Source branch (e.g. unstable)
+        required: true
+        default: unstable
+      target_branch:
+        description: Target branch (e.g. testing)
+        required: true
+        default: testing
+      packages:
+        description: Comma-separated package filenames, or ALL
+        required: true
+
+env:
+  ARCH: x86_64
+
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: repo-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: install repo tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pacman-package-manager
+          pip install boto3
+      - name: promote in R2
+        env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python3 scripts/promote.py \
+            --source-branch "${{ inputs.source_branch }}" \
+            --target-branch "${{ inputs.target_branch }}" \
+            --packages "${{ inputs.packages }}" \
+            --arch "$ARCH"
