@@ -7,6 +7,7 @@ Emits a JSON build list on stdout; everything else goes to stderr.
 """
 
 import argparse
+import base64
 import json
 import os
 import subprocess
@@ -18,6 +19,9 @@ import urllib.request
 
 TOPIC = "manjaro-contrib-pkg"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Cloudflare answers the default Python-urllib agent with 403, which would
+# otherwise look like "artifact missing" and rebuild every package forever.
+USER_AGENT = "manjaro-contrib-builder"
 
 
 def log(msg: str) -> None:
@@ -48,19 +52,19 @@ def discover_repos(org: str, token: str) -> list[dict]:
 
 
 def fetch_pkgbuild(repo: dict, token: str) -> str | None:
+    # The contents API, unlike raw.githubusercontent.com, is not CDN-cached
+    # and reflects a push immediately — otherwise a fresh bump looks built.
     url = (
-        f"https://raw.githubusercontent.com/{repo['full_name']}"
-        f"/{repo['default_branch']}/PKGBUILD"
+        f"https://api.github.com/repos/{repo['full_name']}"
+        f"/contents/PKGBUILD?ref={repo['default_branch']}"
     )
-    req = urllib.request.Request(url)
-    req.add_header("Authorization", f"Bearer {token}")
     try:
-        with urllib.request.urlopen(req) as resp:
-            return resp.read().decode()
+        data = github_request(url, token)
     except urllib.error.HTTPError as e:
         if e.code == 404:
             return None
         raise
+    return base64.b64decode(data["content"]).decode()
 
 
 def parse_pkgbuild(content: str, workdir: str) -> dict | None:
@@ -99,12 +103,15 @@ def artifact_names(fields: dict, target_arch: str) -> list[str]:
 def exists_on_r2(repo_url: str, branch: str, arch: str, filename: str) -> bool:
     url = f"{repo_url}/{branch}/{arch}/{urllib.parse.quote(filename)}"
     req = urllib.request.Request(url, method="HEAD")
+    req.add_header("User-Agent", USER_AGENT)
     try:
         with urllib.request.urlopen(req):
             return True
     except urllib.error.HTTPError as e:
-        if e.code in (403, 404):  # R2 public buckets return 404; S3-style 403
+        if e.code == 404:
             return False
+        # Anything else (403 bot rules, 5xx) is an error, not an absent
+        # artifact — treating it as absent would rebuild and republish.
         raise
 
 
