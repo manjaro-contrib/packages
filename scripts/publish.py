@@ -15,6 +15,7 @@ import sys
 
 import boto3
 from botocore.exceptions import ClientError
+from repo_remove import artifacts_for, pkgname_of
 
 DB_SUFFIXES = [".db", ".db.tar.gz", ".files", ".files.tar.gz"]
 
@@ -31,6 +32,22 @@ def s3_client():
         aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
         region_name="auto",
     )
+
+
+def prune_superseded(s3, bucket: str, prefix: str, published: list[str]) -> None:
+    """Drop older versions of just-published packages from the bucket.
+
+    repo-add's --remove only unlinks local files, and the previous versions
+    exist solely on R2, so they would accumulate forever without this.
+    """
+    keep = set(published)
+    for filename in published:
+        for key in artifacts_for(s3, bucket, prefix, pkgname_of(filename)):
+            name = key.removeprefix(prefix)
+            if name in keep or name.removesuffix(".sig") in keep:
+                continue
+            s3.delete_object(Bucket=bucket, Key=key)
+            log(f"pruned superseded {name}")
 
 
 def main() -> int:
@@ -59,7 +76,7 @@ def main() -> int:
             raise
         log("no database yet, repo-add will create one")
 
-    subprocess.run(["repo-add", "--remove", db_file, *packages], check=True)
+    subprocess.run(["repo-add", db_file, *packages], check=True)
 
     for pkg in packages:
         s3.upload_file(pkg, bucket, prefix + os.path.basename(pkg))
@@ -67,6 +84,8 @@ def main() -> int:
         sig = pkg + ".sig"
         if os.path.exists(sig):
             s3.upload_file(sig, bucket, prefix + os.path.basename(sig))
+
+    prune_superseded(s3, bucket, prefix, [os.path.basename(p) for p in packages])
 
     for suffix in DB_SUFFIXES:
         local = os.path.join(args.pkg_dir, f"{args.db_name}{suffix}")

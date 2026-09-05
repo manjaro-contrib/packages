@@ -32,23 +32,26 @@ def s3_client():
     )
 
 
-def belongs_to(filename: str, pkgname: str) -> bool:
-    """True if filename is an artifact of exactly pkgname.
+def pkgname_of(filename: str) -> str | None:
+    """The package name in `name-ver-rel-arch.pkg.tar.zst[.sig]`, else None.
 
-    Pacman names artifacts `name-ver-rel-arch.pkg.tar.zst`, and neither ver
-    nor rel nor arch may contain a dash. Package names may, so anchoring on
-    the three trailing dash-separated fields is what keeps `foo` from also
-    matching `foo-git`.
+    Neither ver, rel nor arch may contain a dash while package names may, so
+    stripping exactly three trailing dash-separated fields is what keeps
+    `foo` from also matching `foo-git`.
     """
     body = filename.removesuffix(".sig").removesuffix(".pkg.tar.zst")
     head, sep, _arch = body.rpartition("-")
     if not sep:
-        return False
+        return None
     head, sep, _rel = head.rpartition("-")
     if not sep:
-        return False
+        return None
     name, sep, _ver = head.rpartition("-")
-    return bool(sep) and name == pkgname
+    return name if sep else None
+
+
+def belongs_to(filename: str, pkgname: str) -> bool:
+    return pkgname_of(filename) == pkgname
 
 
 def artifacts_for(s3, bucket: str, prefix: str, pkgname: str) -> list[str]:
