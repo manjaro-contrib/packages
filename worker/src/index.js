@@ -21,14 +21,7 @@ function humanSize(bytes) {
   return `${unit === 0 ? value : value.toFixed(1)} ${units[unit]}`;
 }
 
-function usage(host) {
-  return `<pre># add to /etc/pacman.conf, above [core]
-[${REPO_NAME}]
-SigLevel = Never
-Server = https://${escapeHtml(host)}/unstable/$arch</pre>`;
-}
-
-export function renderListing(prefix, dirs, files, host) {
+export function renderListing(prefix, dirs, files) {
   const parent = prefix.replace(/[^/]+\/$/, '');
   const rows = [
     ...(prefix ? [`<a class="row" href="/${escapeHtml(parent)}">../</a>`] : []),
@@ -61,12 +54,10 @@ h1 { font-size: 1.1rem; font-weight: 600; }
        padding: .15rem 0; text-decoration: none; }
 .row:hover { text-decoration: underline; }
 i { opacity: .6; font-style: normal; }
-pre { background: #8881; padding: 1rem; overflow-x: auto; border-radius: .4rem; }
 </style>
 </head>
 <body>
 <h1>/${escapeHtml(prefix)}</h1>
-${prefix === '' ? usage(host) : ''}
 ${rows || '<p>empty</p>'}
 </body>
 </html>
@@ -89,7 +80,7 @@ export default {
         return new Response('not found', { status: 404 });
       }
       return new Response(
-        renderListing(key, listed.delimitedPrefixes, files, url.host),
+        renderListing(key, listed.delimitedPrefixes, files),
         { headers: { 'content-type': 'text/html; charset=utf-8' } },
       );
     }
