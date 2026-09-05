@@ -1,4 +1,52 @@
 packages:
+  bluetuith:
+    upstream: https://aur.archlinux.org/bluetuith.git
+    maintainers: ["boredland"]
+  flashfocus:
+    upstream: https://aur.archlinux.org/flashfocus.git
+    maintainers: ["boredland"]
+  nwg-wrapper:
+    upstream: https://aur.archlinux.org/nwg-wrapper.git
+    maintainers: ["boredland"]
+  pacman-log-orphans-hook:
+    upstream: https://aur.archlinux.org/pacman-log-orphans-hook.git
+    maintainers: ["boredland"]
+  pacseek:
+    upstream: https://aur.archlinux.org/pacseek.git
+    maintainers: ["boredland"]
   phinger-cursors:
     upstream: https://aur.archlinux.org/phinger-cursors.git
+    maintainers: ["boredland"]
+  poweralertd:
+    upstream: https://aur.archlinux.org/poweralertd.git
+    maintainers: ["boredland"]
+  python-xpybutil:
+    upstream: https://aur.archlinux.org/python-xpybutil.git
+    maintainers: ["boredland"]
+  swaycwd:
+    upstream: https://aur.archlinux.org/swaycwd.git
+    maintainers: ["boredland"]
+  swaylock-effects:
+    upstream: https://aur.archlinux.org/swaylock-effects.git
+    maintainers: ["boredland"]
+  swayr:
+    upstream: https://aur.archlinux.org/swayr.git
+    maintainers: ["boredland"]
+  swayshot:
+    upstream: https://aur.archlinux.org/swayshot.git
+    maintainers: ["boredland"]
+  sworkstyle:
+    upstream: https://aur.archlinux.org/sworkstyle.git
+    maintainers: ["boredland"]
+  way-displays:
+    upstream: https://aur.archlinux.org/way-displays.git
+    maintainers: ["boredland"]
+  wluma:
+    upstream: https://aur.archlinux.org/wluma.git
+    maintainers: ["boredland"]
+  xdg-terminal-exec:
+    upstream: https://aur.archlinux.org/xdg-terminal-exec.git
+    maintainers: ["boredland"]
+  zeit:
+    upstream: https://aur.archlinux.org/zeit.git
     maintainers: ["boredland"]
