@@ -18,16 +18,15 @@ on:
 jobs:
   remove:
     runs-on: ubuntu-24.04
+    # repo-remove must match the pacman generation that wrote the database
+    container: docker://manjarolinux/base:latest
     concurrency:
       group: repo-publish
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - name: install repo tooling
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y pacman-package-manager
-          pip install boto3
+        run: pacman -Syu --noconfirm --needed pacman-contrib python python-boto3
       - name: remove from R2
         env:
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}

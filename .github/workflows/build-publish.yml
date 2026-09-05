@@ -80,6 +80,9 @@ jobs:
     # partial successes still publish. publish.py fails if nothing was built.
     if: always() && needs.check.outputs.has_pending == 'true' && needs.build.result != 'cancelled' && needs.build.result != 'skipped'
     runs-on: ubuntu-24.04
+    # repo-add must come from the same pacman generation that built the
+    # packages; Ubuntu's build rejects them as "not a package file".
+    container: docker://manjarolinux/base:latest
     concurrency:
       group: repo-publish
       cancel-in-progress: false
@@ -92,10 +95,7 @@ jobs:
           path: packages
           merge-multiple: true
       - name: install repo tooling
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y pacman-package-manager
-          pip install boto3
+        run: pacman -Syu --noconfirm --needed pacman-contrib python python-boto3
       - name: publish to R2
         env:
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
