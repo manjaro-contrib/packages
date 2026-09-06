@@ -13,14 +13,16 @@ Served from <https://packages.manjaro.download>.
 
 ## Using the repository
 
-Import and locally sign the repository key. It is not published to a
-keyserver, so fetch it from this repository:
+Import and locally sign the repository key:
 
 ```sh
 curl -O https://raw.githubusercontent.com/manjaro-contrib/packages/main/gpg-public-key.asc
 sudo pacman-key --add gpg-public-key.asc
-sudo pacman-key --lsign-key E8AAE31963A022B8480CC007A13A52A61B5D8836
+sudo pacman-key --lsign-key A44C644D792767CED7941AFEABB2075D5F310CF8
 ```
+
+This is the same key that signs the Manjaro Sway repository, so anyone who
+already trusts that one needs no further import.
 
 Until the key is trusted, `pacman -Sy` fails with `invalid or corrupted
 database (PGP signature)`. That is the signature check working, not a
@@ -153,6 +155,14 @@ GITHUB_TOKEN="$DISPATCH_TOKEN" python3 scripts/check_updates.py \
 ```
 
 The signing key is passphrase-less so unattended builds can use it. Anyone
-with access to the repository secrets can therefore sign packages; treat
-`GPG_SECRET_BASE64` as production credentials and keep the revocation
-certificate somewhere durable.
+with access to the repository secrets can therefore sign packages, and
+because this key also signs the Manjaro Sway repository the blast radius
+spans both; treat `GPG_SECRET_BASE64` as production credentials.
+
+The key expires 2027-06-07. Extend it before then, or verification breaks
+for every consumer until they refresh it.
+
+Rotating the key leaves published artifacts signed by the old one: run the
+`resign` workflow for each branch afterwards, and note that release assets
+stored for build reuse keep their original signature, so a reused build
+must be rebuilt rather than republished.
