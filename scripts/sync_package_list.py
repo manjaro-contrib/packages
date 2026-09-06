@@ -15,15 +15,14 @@ import json
 import os
 import pathlib
 import re
-import subprocess
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 
 import yaml
+from gh_api import api, commit_file, reset_branch
 
-API = "https://api.github.com"
 AUR_RPC = "https://aur.archlinux.org/rpc/?v=5&type=info"
 AUR_GROUP = "  # tracked against the AUR\n"
 LOCAL_GROUP = "  # maintained here; no external upstream\n"
@@ -33,20 +32,6 @@ def log(msg: str) -> None:
     print(msg, file=sys.stderr, flush=True)
 
 
-def api(method: str, path: str, token: str, body: dict | None = None):
-    req = urllib.request.Request(
-        f"{API}{path}",
-        method=method,
-        data=json.dumps(body).encode() if body is not None else None,
-    )
-    req.add_header("Accept", "application/vnd.github+json")
-    req.add_header("Authorization", f"Bearer {token}")
-    try:
-        with urllib.request.urlopen(req) as resp:
-            raw = resp.read()
-            return resp.status, json.loads(raw) if raw else None
-    except urllib.error.HTTPError as e:
-        return e.code, json.loads(e.read() or b"null")
 
 
 def tagged_repos(org: str, topic: str, token: str) -> list[str]:
@@ -95,10 +80,6 @@ def insert(text: str, name: str, block: str, group: str) -> str:
     trimmed = section.rstrip("\n")
     at = start + len(trimmed) + 1
     return text[:at] + block + text[at:]
-
-
-def run(cmd: list[str]) -> None:
-    subprocess.run(cmd, check=True, capture_output=True, text=True)
 
 
 def main() -> int:
@@ -157,14 +138,17 @@ def main() -> int:
         log(f"would add {len(missing)} entr(ies)")
         return 0
 
-    pathlib.Path(args.config).write_text(text)
     head = "chore/package-list"
-    run(["git", "config", "user.name", "manjaro-contrib-bot"])
-    run(["git", "config", "user.email", "bot@manjaro-contrib"])
-    run(["git", "checkout", "-B", head])
-    run(["git", "add", args.config])
-    run(["git", "commit", "-m", f"chore: add {len(missing)} package(s) to packages.yml"])
-    run(["git", "push", "--force", "origin", head])
+    # rebuilt from base each run so the proposal never carries stale entries
+    reset_branch(args.repo, head, args.base, token)
+    commit_file(
+        args.repo,
+        args.config,
+        text,
+        f"chore: add {len(missing)} package(s) to packages.yml",
+        head,
+        token,
+    )
 
     body = f"These repositories carry the `{args.topic}` topic but were not listed:\n\n" + "\n".join(
         f"- [`{n}`](https://github.com/{org}/{n})"

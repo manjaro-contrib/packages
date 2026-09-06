@@ -17,8 +17,11 @@ import urllib.error
 import urllib.request
 
 import yaml
+from gh_api import api
 
 UPDATE_BRANCH = "update-from-upstream"
+# the raw upstream commits, pushed so github can merge them itself
+UPSTREAM_REF = "upstream-master"
 
 
 def log(msg: str) -> None:
@@ -78,19 +81,48 @@ def sync_package(org: str, name: str, cfg: dict, token: str) -> bool:
             return True
         log(f"{name}: upstream is {ahead} commits ahead")
 
+        # dry-run the merge locally: a conflict must not reach a pull request
         run(["git", "checkout", "-b", UPDATE_BRANCH], cwd=repo)
         merge = run(
-            ["git", "merge", "--no-edit", "upstream/master"], cwd=repo, check=False
+            ["git", "merge", "--no-commit", "--no-ff", "upstream/master"],
+            cwd=repo,
+            check=False,
         )
         if merge.returncode != 0:
             run(["git", "merge", "--abort"], cwd=repo, check=False)
             log(f"{name}: merge conflict with upstream, manual intervention needed")
             return False
+        run(["git", "merge", "--abort"], cwd=repo, check=False)
 
-        run(["git", "push", "--force", "origin", UPDATE_BRANCH], cwd=repo)
         default_branch = run(
             ["git", "rev-parse", "--abbrev-ref", "origin/HEAD"], cwd=repo
         ).stdout.strip().removeprefix("origin/")
+
+        # push the upstream commits under their own ref, then let GitHub
+        # create the merge commit: commits it makes server-side are signed,
+        # unlike anything `git merge` produces here
+        run(
+            ["git", "push", "--force", "origin", f"upstream/master:refs/heads/{UPSTREAM_REF}"],
+            cwd=repo,
+        )
+        run(
+            ["git", "push", "--force", "origin", f"origin/{default_branch}:refs/heads/{UPDATE_BRANCH}"],
+            cwd=repo,
+        )
+
+    status, payload = api(
+        "POST",
+        f"/repos/{org}/{name}/merges",
+        token,
+        {
+            "base": UPDATE_BRANCH,
+            "head": UPSTREAM_REF,
+            "commit_message": f"chore: merge {ahead} upstream commit(s)",
+        },
+    )
+    if status not in (200, 201, 204):
+        log(f"{name}: server-side merge failed ({status}): {payload}")
+        return False
 
     pr = github_api(
         "POST",

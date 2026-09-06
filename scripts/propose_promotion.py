@@ -11,38 +11,19 @@ its source rather than accumulating stale pull requests.
 """
 
 import argparse
-import json
 import os
-import subprocess
 import sys
-import urllib.error
-import urllib.request
 
+from gh_api import api, commit_file, reset_branch
 from manifest import dump, load, path_for
 from repo_common import FLOW, list_packages, s3_client
 from repo_remove import pkgname_of
-
-API = "https://api.github.com"
 
 
 def log(msg: str) -> None:
     print(msg, file=sys.stderr, flush=True)
 
 
-def api(method: str, path: str, token: str, body: dict | None = None):
-    req = urllib.request.Request(
-        f"{API}{path}",
-        method=method,
-        data=json.dumps(body).encode() if body is not None else None,
-    )
-    req.add_header("Accept", "application/vnd.github+json")
-    req.add_header("Authorization", f"Bearer {token}")
-    try:
-        with urllib.request.urlopen(req) as resp:
-            raw = resp.read()
-            return resp.status, json.loads(raw) if raw else None
-    except urllib.error.HTTPError as e:
-        return e.code, json.loads(e.read() or b"null")
 
 
 def version_of(filename: str, name: str) -> str:
@@ -58,10 +39,6 @@ def source_versions(s3, bucket: str, branch: str, arch: str) -> dict[str, str]:
         if name:
             versions[name] = version_of(key, name)
     return versions
-
-
-def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, check=True, capture_output=True, text=True, **kw)
 
 
 def describe(current: dict, proposed: dict) -> str:
@@ -111,17 +88,17 @@ def main() -> int:
         return 0
 
     head = f"promote/{args.branch}"
-    path = path_for(args.branch)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(dump(args.branch, proposed))
-
-    run(["git", "config", "user.name", "manjaro-contrib-bot"])
-    run(["git", "config", "user.email", "bot@manjaro-contrib"])
-    run(["git", "checkout", "-B", head])
-    run(["git", "add", str(path)])
-    run(["git", "commit", "-m", f"chore: promote {len(proposed)} package(s) to {args.branch}"])
-    # force: the proposal always reflects the source branch as it is now
-    run(["git", "push", "--force", "origin", head])
+    # the branch is rebuilt from base each run, so the proposal always
+    # reflects the source branch as it is now
+    reset_branch(args.repo, head, args.base, token)
+    commit_file(
+        args.repo,
+        str(path_for(args.branch)),
+        dump(args.branch, proposed),
+        f"chore: promote {len(proposed)} package(s) to {args.branch}",
+        head,
+        token,
+    )
 
     status, prs = api("GET", f"/repos/{args.repo}/pulls?head={args.repo.split('/')[0]}:{head}&state=open", token)
     if status == 200 and prs:
