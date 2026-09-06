@@ -13,13 +13,20 @@ Served from <https://packages.manjaro.download>.
 
 ## Using the repository
 
-Import and locally sign the repository key. It is not published to a
-keyserver, so fetch it from this repository:
+Import and locally sign the repository key:
 
 ```sh
 curl -O https://raw.githubusercontent.com/manjaro-contrib/packages/main/gpg-public-key.asc
 sudo pacman-key --add gpg-public-key.asc
-sudo pacman-key --lsign-key E8AAE31963A022B8480CC007A13A52A61B5D8836
+sudo pacman-key --lsign-key A13A52A61B5D8836
+```
+
+This key is certified by the Manjaro Sway repository key
+(`A44C644D792767CED7941AFEABB2075D5F310CF8`), so if you already trust that
+one you can extend trust rather than verifying this key from scratch:
+
+```sh
+sudo pacman-key --lsign-key A44C644D792767CED7941AFEABB2075D5F310CF8
 ```
 
 Until the key is trusted, `pacman -Sy` fails with `invalid or corrupted
@@ -156,3 +163,8 @@ The signing key is passphrase-less so unattended builds can use it. Anyone
 with access to the repository secrets can therefore sign packages; treat
 `GPG_SECRET_BASE64` as production credentials and keep the revocation
 certificate somewhere durable.
+
+It is a key of its own rather than the Manjaro Sway key, so a compromise
+here is contained to this repository and can be revoked without touching
+that one. The certification from the Sway key is what carries trust
+across; renewing or replacing it does not require re-signing packages.
