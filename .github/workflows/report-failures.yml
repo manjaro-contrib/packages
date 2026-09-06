@@ -1,0 +1,45 @@
+name: report-failures
+
+on:
+  schedule:
+    # hourly: a broken workflow should not wait a day to be noticed, and
+    # the check is a handful of API reads
+    - cron: '20 * * * *'
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    concurrency:
+      group: report-failures
+      cancel-in-progress: true
+    steps:
+      - name: mint an app token
+        # the app carries issues: write
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: report what is currently failing
+        env:
+          GITHUB_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          python3 scripts/report_failures.py \
+            --repo "${{ github.repository }}" \
+            --issue "${{ github.repository }}" 2>&1 | tee /tmp/report.txt
+      - name: summarise
+        if: always()
+        run: |
+          {
+            echo '## Workflows currently failing'
+            echo
+            echo '```'
+            cat /tmp/report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
