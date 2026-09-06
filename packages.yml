@@ -71,8 +71,6 @@ packages:
     maintainers: ["boredland"]
   kvantum-theme-matcha:
     maintainers: ["boredland"]
-  manjaro-aur-support:
-    maintainers: ["boredland"]
   manjaro-browser-settings:
     maintainers: ["boredland"]
   manjaro-sway-settings:
