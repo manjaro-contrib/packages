@@ -17,3 +17,7 @@ printf 'pkgver=%s\n' "$pkgver"
 printf 'pkgrel=%s\n' "$pkgrel"
 printf 'epoch=%s\n' "${epoch:-}"
 printf 'arch=%s\n' "${arch[*]}"
+printf 'provides=%s\n' "${provides[*]:-}"
+# every dependency kind matters for build order: makedepends and
+# checkdepends must exist before makepkg runs, depends before it resolves
+printf 'depends=%s\n' "${depends[*]:-} ${makedepends[*]:-} ${checkdepends[*]:-}"

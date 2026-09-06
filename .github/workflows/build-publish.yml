@@ -22,6 +22,7 @@ jobs:
     outputs:
       pending: ${{ steps.check.outputs.pending }}
       has_pending: ${{ steps.check.outputs.has_pending }}
+      more_waves: ${{ steps.check.outputs.more_waves }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: check
@@ -31,9 +32,15 @@ jobs:
         run: |
           args=(--org "${{ github.repository_owner }}" --repo-url "$REPO_URL" --branch "$BRANCH" --arch "$ARCH")
           [ -n "$ONLY_REPO" ] && args+=(--only-repo "$ONLY_REPO")
-          pending=$(python3 scripts/check_updates.py "${args[@]}")
-          echo "pending=$pending" >> "$GITHUB_OUTPUT"
-          echo "has_pending=$(jq 'length > 0' <<<"$pending")" >> "$GITHUB_OUTPUT"
+          all=$(python3 scripts/check_updates.py "${args[@]}")
+          # build only the first wave: later waves depend on packages this
+          # run publishes, so they cannot resolve until it finishes
+          pending=$(jq -c '[.[] | select(.wave == 0)]' <<<"$all")
+          {
+            echo "pending=$pending"
+            echo "has_pending=$(jq 'length > 0' <<<"$pending")"
+            echo "more_waves=$(jq 'any(.[]; .wave > 0)' <<<"$all")"
+          } >> "$GITHUB_OUTPUT"
 
   build:
     needs: check
@@ -183,3 +190,16 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
           python3 scripts/publish.py --pkg-dir packages --branch "$BRANCH" --arch "$ARCH"
+
+  next-wave:
+    needs: [check, publish]
+    # the packages left over depend on what publish just uploaded, so a
+    # fresh run recomputes them as wave 0 and builds them
+    if: needs.check.outputs.more_waves == 'true' && needs.publish.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: dispatch the next wave
+        env:
+          GH_TOKEN: ${{ secrets.DISPATCH_TOKEN || github.token }}
+        run: |
+          gh workflow run build-publish.yml --repo "${{ github.repository }}"

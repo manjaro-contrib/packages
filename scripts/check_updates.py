@@ -90,7 +90,62 @@ def parse_pkgbuild(content: str, workdir: str) -> dict | None:
     )
     fields["pkgname"] = fields["pkgname"].split()
     fields["arch"] = fields["arch"].split()
+    fields["provides"] = [strip_constraint(d) for d in fields.get("provides", "").split()]
+    fields["depends"] = [strip_constraint(d) for d in fields.get("depends", "").split()]
     return fields
+
+
+def strip_constraint(dep: str) -> str:
+    """`foo>=1.2` and `foo=1.2` both name the package `foo`."""
+    for sep in (">=", "<=", ">", "<", "="):
+        if sep in dep:
+            return dep.split(sep, 1)[0]
+    return dep
+
+
+def assign_waves(pending: list[dict]) -> None:
+    """Number each package by how deep it sits in the pending dependency graph.
+
+    The build matrix runs everything at once, so a package depending on
+    another package built in the same run fails: its dependency is only in
+    the repository after that run publishes. Grouping into waves lets the
+    workflow build wave 0, publish, then wave 1, and so on.
+
+    Only dependencies *within this run* matter; anything already published
+    or coming from an upstream repository resolves normally.
+    """
+    # a package can be pulled in under any name it provides
+    provider = {}
+    for item in pending:
+        for name in map(strip_constraint, item["names"] + item["provides"]):
+            provider[name] = item["pkgbase"]
+
+    deps = {
+        item["pkgbase"]: {
+            provider[dep]
+            for dep in map(strip_constraint, item["depends"])
+            if dep in provider and provider[dep] != item["pkgbase"]
+        }
+        for item in pending
+    }
+
+    wave = {}
+    remaining = dict(deps)
+    current = 0
+    while remaining:
+        ready = [k for k, v in remaining.items() if not (v - wave.keys())]
+        if not ready:
+            # a cycle cannot be ordered; build the rest together and let
+            # makepkg report which dependency is genuinely unsatisfiable
+            log(f"  dependency cycle among {', '.join(sorted(remaining))}")
+            ready = list(remaining)
+        for name in ready:
+            wave[name] = current
+            del remaining[name]
+        current += 1
+
+    for item in pending:
+        item["wave"] = wave[item["pkgbase"]]
 
 
 def full_version(fields: dict) -> str:
@@ -132,6 +187,11 @@ def main() -> int:
     )
     parser.add_argument("--branch", default="unstable")
     parser.add_argument("--arch", default="x86_64")
+    parser.add_argument(
+        "--wave",
+        type=int,
+        help="emit only packages in this dependency wave",
+    )
     parser.add_argument(
         "--only-repo",
         help="restrict the check to a single repository name (dispatch trigger)",
@@ -185,8 +245,23 @@ def main() -> int:
                 "version": version,
                 "artifacts": artifacts,
                 "reusable": reusable,
+                "names": fields["pkgname"],
+                "provides": fields["provides"],
+                "depends": fields["depends"],
             }
         )
+
+    assign_waves(pending)
+    pending.sort(key=lambda p: (p["wave"], p["pkgbase"]))
+    waves = max((p["wave"] for p in pending), default=-1) + 1
+    if waves > 1:
+        log(f"{len(pending)} package(s) in {waves} dependency waves")
+        for w in range(waves):
+            names = [p["pkgbase"] for p in pending if p["wave"] == w]
+            log(f"  wave {w}: {', '.join(names)}")
+
+    if args.wave is not None:
+        pending = [p for p in pending if p["wave"] == args.wave]
 
     json.dump(pending, sys.stdout)
     return 0
