@@ -4,7 +4,7 @@
 #   when it moves ahead. Omit it for packages maintained here, which
 #   have no external source.
 # maintainers: requested as reviewers on those PRs.
-# override: why we ship a package manjaro already ships. Without this,
+# override: why we ship a package arch already ships. Without this,
 #   check-upstream-dupes reports it as redundant, since an overlay package
 #   that duplicates the distribution only decides which one pacman picks.
 
@@ -71,12 +71,10 @@ packages:
     maintainers: ["boredland"]
   kvantum-theme-matcha:
     maintainers: ["boredland"]
-    override: manjaro stable carries 20190810, a year behind this build
   manjaro-aur-support:
     maintainers: ["boredland"]
   manjaro-browser-settings:
     maintainers: ["boredland"]
-    override: carries the sway-specific browser defaults
   manjaro-sway-settings:
     maintainers: ["boredland"]
   manjaro-sway-settings-git:

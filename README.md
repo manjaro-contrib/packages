@@ -91,7 +91,7 @@ upload.
 | `update-upstreams` | cron | opens PRs when a tracked AUR package changes |
 | `sync-codeowners` | on `packages.yml`, cron | writes CODEOWNERS into each package repo from `maintainers` |
 | `sync-package-list` | cron | opens a PR adding repos that carry the topic but are missing from `packages.yml` |
-| `check-upstream-dupes` | weekly, on `packages.yml` | reports packages Manjaro now ships itself |
+| `check-upstream-dupes` | weekly, on `packages.yml` | reports packages Arch now ships itself |
 | `sync-edition-topics` | cron | tags each repo `edition-<name>` for every edition whose settings package depends on it |
 | `build-images` | on `images/`, weekly | publishes the prebuilt toolchain images the other jobs run in |
 
@@ -120,9 +120,11 @@ Add it to [`packages.yml`](packages.yml), which inventories every package
 this repository builds.
 
 An overlay only earns its keep where the distribution falls short, so
-`check-upstream-dupes` compares the list against Manjaro's own
-repositories weekly and fails when one of ours is shipped there too. If
-that duplication is deliberate, say why with an `override` key and the
+`check-upstream-dupes` compares the list against Arch's repositories
+weekly and fails when one of ours is shipped there too. Arch is checked
+rather than Manjaro because a package reaching Arch flows downstream on
+its own, which is the earliest point at which ours becomes redundant. If
+the duplication is deliberate, say why with an `override` key and the
 check reports it as intentional instead. Give it an `upstream` to have update PRs opened
 automatically when that source moves; omit it for packages maintained
 here. `maintainers` is also the source for each package repo's
