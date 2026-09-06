@@ -85,6 +85,7 @@ upload.
 | `promotion-backlog` | cron, after the above | keeps one issue per branch listing what is pending |
 | `sync-codeowners` | on `packages.yml`, cron | writes CODEOWNERS into each package repo from `maintainers` |
 | `sync-package-list` | cron | opens a PR adding repos that carry the topic but are missing from `packages.yml` |
+| `sync-edition-topics` | cron | tags each repo `edition-<name>` for every edition whose settings package depends on it |
 
 Every workflow that writes the database shares the `repo-publish`
 concurrency group, so publishes, promotions and removals queue rather than
@@ -104,7 +105,9 @@ pinning an older version rolls back, deleting an entry withdraws a package.
 ### Adding a package
 
 Create a repository containing a `PKGBUILD`, add the topic
-`pkg`, and it is picked up on the next run. To track an AUR
+`pkg`, and it is picked up on the next run. Edition membership is derived,
+not declared: a package carries `edition-sway` because
+`manjaro-sway-settings` depends on it, directly or transitively. To track an AUR
 Add it to [`packages.yml`](packages.yml), which inventories every package
 this repository builds. Give it an `upstream` to have update PRs opened
 automatically when that source moves; omit it for packages maintained
