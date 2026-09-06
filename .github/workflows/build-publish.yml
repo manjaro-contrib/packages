@@ -24,10 +24,18 @@ jobs:
       has_pending: ${{ steps.check.outputs.has_pending }}
       more_waves: ${{ steps.check.outputs.more_waves }}
     steps:
+      - name: mint an app token
+        # app-authored commits and releases are signed by github
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: check
         env:
-          GITHUB_TOKEN: ${{ secrets.DISPATCH_TOKEN || github.token }}
+          GITHUB_TOKEN: ${{ steps.app.outputs.token }}
           ONLY_REPO: ${{ github.event.client_payload.repo || inputs.repo }}
         run: |
           args=(--org "${{ github.repository_owner }}" --repo-url "$REPO_URL" --branch "$BRANCH" --arch "$ARCH")
@@ -78,6 +86,14 @@ jobs:
           printf '\n[manjaro-contrib]\nSigLevel = Required DatabaseRequired\nServer = %s/%s/$arch\n' \
             "$REPO_URL" "$BRANCH" >> /etc/pacman.conf
           pacman -Sy --noconfirm
+      - name: mint an app token
+        # app-authored commits and releases are signed by github
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: builder
@@ -86,7 +102,7 @@ jobs:
         # binary keeps the repo byte-identical and skips a recompile
         if: matrix.package.reusable
         env:
-          GITHUB_TOKEN: ${{ secrets.DISPATCH_TOKEN || github.token }}
+          GITHUB_TOKEN: ${{ steps.app.outputs.token }}
         run: |
           mkdir -p pkg
           python3 builder/scripts/release_store.py download \
@@ -100,7 +116,7 @@ jobs:
         with:
           repository: ${{ matrix.package.repo }}
           ref: ${{ matrix.package.default_branch }}
-          token: ${{ secrets.DISPATCH_TOKEN || github.token }}
+          token: ${{ steps.app.outputs.token }}
           path: pkg
       - name: import signing key
         if: ${{ !matrix.package.reusable }}
@@ -138,7 +154,7 @@ jobs:
         # only durable record of this binary
         if: ${{ !matrix.package.reusable }}
         env:
-          GITHUB_TOKEN: ${{ secrets.DISPATCH_TOKEN || github.token }}
+          GITHUB_TOKEN: ${{ steps.app.outputs.token }}
         run: |
           python3 builder/scripts/release_store.py upload \
             --repo "${{ matrix.package.repo }}" \
@@ -199,11 +215,17 @@ jobs:
     runs-on: ubuntu-24.04
     # the built-in token can be granted workflow dispatch here; the PAT
     # carries no Actions scope
-    permissions:
-      actions: write
     steps:
+      - name: mint an app token
+        # app-authored commits and releases are signed by github
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
       - name: dispatch the next wave
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app.outputs.token }}
         run: |
           gh workflow run build-publish.yml --repo "${{ github.repository }}"

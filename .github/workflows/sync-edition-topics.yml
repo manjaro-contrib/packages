@@ -1,13 +1,21 @@
-name: update-upstreams
+name: sync-edition-topics
 
 on:
   schedule:
-    - cron: '0 2 * * *'
+    - cron: '15 4 * * *'
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Report the changes without applying them
+        type: boolean
+        default: false
 
 jobs:
-  update:
+  sync:
     runs-on: ubuntu-24.04
+    concurrency:
+      group: sync-edition-topics
+      cancel-in-progress: false
     steps:
       - name: mint an app token
         # app-authored commits are signed by github; a PAT's are not
@@ -18,9 +26,11 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: sync packages
+      - name: tag repos with the editions that depend on them
         env:
+          # writing topics needs repository admin, which the built-in token
+          # does not carry for other repositories
           GITHUB_TOKEN: ${{ steps.app.outputs.token }}
         run: |
-          pip install pyyaml
-          python3 scripts/track_upstreams.py --org "${{ github.repository_owner }}"
+          python3 scripts/sync_edition_topics.py --org "${{ github.repository_owner }}" \
+            ${{ inputs.dry_run && '--dry-run' || '' }}
