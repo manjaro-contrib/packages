@@ -1,0 +1,56 @@
+name: check-repo
+
+on:
+  schedule:
+    # daily: the publish step already checks the branch it wrote, so this
+    # exists to catch drift nothing was watching - a promotion, a removal,
+    # or an interrupted run between publishes
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Single branch to check, or empty for all of them
+        required: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    concurrency:
+      group: check-repo
+      cancel-in-progress: false
+    steps:
+      - name: mint an app token
+        # the app carries issues: write
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: install tooling
+        run: pip install boto3
+      - name: verify every branch resolves
+        env:
+          GITHUB_TOKEN: ${{ steps.app.outputs.token }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python3 scripts/check_repo.py \
+            --issue "${{ github.repository }}" \
+            ${{ inputs.branch && format('--branch {0}', inputs.branch) || '' }} \
+            2>&1 | tee /tmp/report.txt
+      - name: summarise
+        if: always()
+        run: |
+          {
+            echo '## Repository consistency'
+            echo
+            echo '```'
+            cat /tmp/report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

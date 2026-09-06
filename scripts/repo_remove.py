@@ -86,13 +86,21 @@ def main() -> int:
             prefix = f"{branch}/{arch}/"
             with tempfile.TemporaryDirectory() as workdir:
                 db_file = os.path.join(workdir, f"{args.db_name}.db.tar.gz")
-                try:
-                    s3.download_file(
-                        bucket, prefix + f"{args.db_name}.db.tar.gz", db_file
-                    )
-                except ClientError as e:
-                    if e.response["Error"]["Code"] not in ("NoSuchKey", "404"):
-                        raise
+                # .files must come along: repo-remove rewrites whichever
+                # databases are present and leaves the absent one stale
+                for suffix in (".db.tar.gz", ".files.tar.gz"):
+                    local = os.path.join(workdir, f"{args.db_name}{suffix}")
+                    try:
+                        s3.download_file(
+                            bucket, prefix + f"{args.db_name}{suffix}", local
+                        )
+                    except ClientError as e:
+                        if e.response["Error"]["Code"] not in (
+                            "NoSuchKey",
+                            "404",
+                        ):
+                            raise
+                if not os.path.exists(db_file):
                     log(f"{branch}/{arch}: no database, skipping")
                     continue
 

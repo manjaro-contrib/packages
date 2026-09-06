@@ -59,13 +59,19 @@ def main() -> int:
     prefix = f"{args.branch}/{args.arch}/"
     db_file = os.path.join(args.pkg_dir, f"{args.db_name}.db.tar.gz")
 
-    try:
-        s3.download_file(bucket, prefix + f"{args.db_name}.db.tar.gz", db_file)
-        log("downloaded existing database")
-    except ClientError as e:
-        if e.response["Error"]["Code"] not in ("NoSuchKey", "404"):
-            raise
-        log("no database yet, repo-add will create one")
+    # both databases must be fetched: repo-add updates whichever files it
+    # finds and creates the rest from scratch, so publishing with only
+    # .db present rebuilt .files from the current build alone, dropping
+    # every other package's file list
+    for suffix in (".db.tar.gz", ".files.tar.gz"):
+        local = os.path.join(args.pkg_dir, f"{args.db_name}{suffix}")
+        try:
+            s3.download_file(bucket, prefix + f"{args.db_name}{suffix}", local)
+            log(f"downloaded existing {args.db_name}{suffix}")
+        except ClientError as e:
+            if e.response["Error"]["Code"] not in ("NoSuchKey", "404"):
+                raise
+            log(f"no {args.db_name}{suffix} yet, repo-add will create one")
 
     # --include-sigs records each package's signature in the database, as
     # every Arch and Manjaro repository does; tooling that reads a database

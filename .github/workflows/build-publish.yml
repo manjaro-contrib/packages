@@ -196,6 +196,16 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
           python3 scripts/publish.py --pkg-dir packages --branch "$BRANCH" --arch "$ARCH"
+      - name: verify the branch resolves
+        # the state hash changes for a partial upload exactly as it does
+        # for a good one, so check the invariants a client depends on
+        env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python3 scripts/check_repo.py --branch "$BRANCH" --arch "$ARCH"
 
   next-wave:
     needs: [check, publish]
