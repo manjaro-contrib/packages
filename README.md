@@ -21,17 +21,14 @@ sudo pacman-key --add gpg-public-key.asc
 sudo pacman-key --lsign-key A13A52A61B5D8836
 ```
 
-This key is certified by the Manjaro Sway repository key
-(`A44C644D792767CED7941AFEABB2075D5F310CF8`), so if you already trust that
-one you can extend trust rather than verifying this key from scratch:
+The key is also certified by the Manjaro Sway repository key
+(`A44C644D792767CED7941AFEABB2075D5F310CF8`), which is evidence of who it
+belongs to if you already trust that one. Pacman does not follow that
+chain, though: it requires the local signature above regardless.
 
-```sh
-sudo pacman-key --lsign-key A44C644D792767CED7941AFEABB2075D5F310CF8
-```
-
-Until the key is trusted, `pacman -Sy` fails with `invalid or corrupted
-database (PGP signature)`. That is the signature check working, not a
-broken mirror.
+Until the key is locally signed, `pacman -Sy` fails with `signature from
+"manjaro-contrib build server" is unknown trust`. That is the signature
+check working, not a broken mirror.
 
 Then add the repository to `/etc/pacman.conf`, above `[core]`:
 
