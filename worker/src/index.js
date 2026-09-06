@@ -60,7 +60,7 @@ footer { margin-top: 2rem; opacity: .7; }
 <body>
 <h1>/${escapeHtml(prefix)}</h1>
 ${rows || '<p>empty</p>'}
-<footer>ISOs are at <a href="https://manjaro.download">manjaro.download</a></footer>
+<footer>ISOs are at <a href="https://manjaro.download">manjaro.download</a> &middot; built by <a href="https://github.com/manjaro-contrib/packages">manjaro-contrib/packages</a></footer>
 </body>
 </html>
 `;
