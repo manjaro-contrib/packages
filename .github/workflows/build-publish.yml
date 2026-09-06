@@ -197,9 +197,13 @@ jobs:
     # fresh run recomputes them as wave 0 and builds them
     if: needs.check.outputs.more_waves == 'true' && needs.publish.result == 'success'
     runs-on: ubuntu-24.04
+    # the built-in token can be granted workflow dispatch here; the PAT
+    # carries no Actions scope
+    permissions:
+      actions: write
     steps:
       - name: dispatch the next wave
         env:
-          GH_TOKEN: ${{ secrets.DISPATCH_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh workflow run build-publish.yml --repo "${{ github.repository }}"
