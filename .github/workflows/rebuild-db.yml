@@ -1,0 +1,65 @@
+name: rebuild-db
+
+on:
+  workflow_dispatch:
+    inputs:
+      branches:
+        description: Comma-separated branches to rebuild
+        required: true
+        default: unstable
+      arches:
+        description: Comma-separated architectures
+        required: true
+        default: x86_64
+      dry_run:
+        description: Report what would be rebuilt without uploading
+        type: boolean
+        default: true
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    # repo-add must match the pacman generation that wrote the database
+    container: docker://ghcr.io/${{ github.repository }}/repo:latest
+    concurrency:
+      # rewrites the same objects publish does
+      group: repo-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: import signing key
+        if: ${{ !inputs.dry_run }}
+        env:
+          GPG_SECRET_BASE64: ${{ secrets.GPG_SECRET_BASE64 }}
+          GPG_KEYID: ${{ vars.GPG_KEYID }}
+        run: scripts/import_key.sh
+      - name: rebuild from the packages on R2
+        env:
+          GPG_KEYID: ${{ inputs.dry_run && '' || vars.GPG_KEYID }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python3 scripts/rebuild_db.py \
+            --branches "${{ inputs.branches }}" \
+            --arches "${{ inputs.arches }}" \
+            ${{ inputs.dry_run && '--dry-run' || '' }}
+      - name: verify the result resolves
+        # a rebuild that leaves the branch inconsistent is worse than the
+        # drift it was meant to repair
+        if: ${{ !inputs.dry_run }}
+        env:
+          BRANCHES: ${{ inputs.branches }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          args=()
+          while IFS= read -r branch; do
+            # "unstable, testing" is a natural thing to type
+            branch="${branch// /}"
+            [ -n "$branch" ] && args+=(--branch "$branch")
+          done <<< "${BRANCHES//,/$'\n'}"
+          python3 scripts/check_repo.py "${args[@]}"
