@@ -1,0 +1,51 @@
+name: signing-probe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: commit via the contents API with the built-in token
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64, json, os, urllib.request
+
+          tok = os.environ["GITHUB_TOKEN"]
+          repo = "${{ github.repository }}"
+
+          def api(method, path, body=None):
+              req = urllib.request.Request(
+                  f"https://api.github.com{path}", method=method,
+                  data=json.dumps(body).encode() if body else None)
+              req.add_header("Authorization", f"Bearer {tok}")
+              req.add_header("Accept", "application/vnd.github+json")
+              with urllib.request.urlopen(req) as r:
+                  raw = r.read()
+                  return json.loads(raw) if raw else None
+
+          base = api("GET", f"/repos/{repo}/git/ref/heads/main")["object"]["sha"]
+          try:
+              api("POST", f"/repos/{repo}/git/refs",
+                  {"ref": "refs/heads/test/signing", "sha": base})
+          except Exception:
+              api("PATCH", f"/repos/{repo}/git/refs/heads/test/signing",
+                  {"sha": base, "force": True})
+
+          api("PUT", f"/repos/{repo}/contents/branches/.probe", {
+              "message": "chore: signing probe",
+              "content": base64.b64encode(b"probe\n").decode(),
+              "branch": "test/signing"})
+
+          sha = api("GET", f"/repos/{repo}/git/ref/heads/test/signing")["object"]["sha"]
+          c = api("GET", f"/repos/{repo}/git/commits/{sha}")
+          print("verified:", c["verification"]["verified"],
+                "reason:", c["verification"]["reason"])
+          print("committer:", c["committer"]["name"])
+          api("DELETE", f"/repos/{repo}/git/refs/heads/test/signing")
+          PY
