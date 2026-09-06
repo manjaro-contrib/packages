@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Discover package repos by GitHub topic and diff them against the R2 repo.
 
+A repository is built only when it is both tagged and listed in
+packages.yml: the topic makes it discoverable, the config authorises it.
+
 Stateless: the desired state is each repo's PKGBUILD on its default branch,
 the actual state is whatever artifacts exist under the branch prefix on R2.
 Packages already released on their own repo are marked reusable so the
@@ -19,6 +22,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import yaml
 from release_store import get_release, has_assets
 
 TOPIC = "pkg"
@@ -192,6 +196,7 @@ def main() -> int:
         type=int,
         help="emit only packages in this dependency wave",
     )
+    parser.add_argument("--config", default="packages.yml")
     parser.add_argument(
         "--only-repo",
         help="restrict the check to a single repository name (dispatch trigger)",
@@ -205,10 +210,25 @@ def main() -> int:
 
     repos = discover_repos(args.org, token)
     log(f"discovered {len(repos)} repos with topic {TOPIC}")
+
+    # The topic makes a repository visible; the config is what authorises it
+    # to be built. Anyone able to add a topic could otherwise have arbitrary
+    # code built and signed with the repository key.
+    with open(args.config) as f:
+        allowed = set(yaml.safe_load(f)["packages"] or {})
+    unlisted = [r["name"] for r in repos if r["name"] not in allowed]
+    for name in sorted(unlisted):
+        log(f"{name}: tagged but not in {args.config}, skipping")
+    repos = [r for r in repos if r["name"] in allowed]
+
+    missing_repos = sorted(allowed - {r["name"] for r in repos})
+    for name in missing_repos:
+        log(f"{name}: in {args.config} but no repo carries the {TOPIC} topic")
+
     if args.only_repo:
         repos = [r for r in repos if r["name"] == args.only_repo]
         if not repos:
-            log(f"repo {args.only_repo} not found or not tagged {TOPIC}")
+            log(f"repo {args.only_repo} is not a listed package tagged {TOPIC}")
             return 1
 
     pending = []

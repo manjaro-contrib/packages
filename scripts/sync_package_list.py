@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Open a pull request adding newly tagged repositories to packages.yml.
 
-A repository carrying the discovery topic is built whether or not it is
-listed, so an unlisted one is invisible in the file that claims to
-inventory everything. This finds that drift and proposes the entry, with an
-AUR upstream prefilled when a package of that name exists there.
+Being listed is what authorises a repository to be built, so this proposes
+the entry rather than creating it: adding a package is a reviewed change,
+and a tagged repository stays inert until someone merges it. An AUR
+upstream is prefilled when a package of that name exists there.
 
 Entries are inserted into the existing text rather than rewritten from
 parsed YAML, so the file's grouping and comments survive.
@@ -150,7 +150,11 @@ def main() -> int:
         token,
     )
 
-    body = f"These repositories carry the `{args.topic}` topic but were not listed:\n\n" + "\n".join(
+    body = (
+        f"These repositories carry the `{args.topic}` topic but are not listed in "
+        "`packages.yml`, so they are **not being built**. Merging this "
+        "authorises them:\n\n"
+    ) + "\n".join(
         f"- [`{n}`](https://github.com/{org}/{n})"
         + (" — tracked against the AUR" if n in aur else "")
         for n in missing
