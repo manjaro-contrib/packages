@@ -6,6 +6,7 @@ __pycache__/
 .gnupg-tmp/
 gpg-signing-key.asc
 gpg-signing-key.b64
+*.pem
 *.pkg.tar.zst
 *.pkg.tar.zst.sig
 *.db

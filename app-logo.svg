@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2ecc9b"/>
+      <stop offset="1" stop-color="#159c74"/>
+    </linearGradient>
+    <linearGradient id="box" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0c674"/>
+      <stop offset="1" stop-color="#d9a441"/>
+    </linearGradient>
+    <linearGradient id="hat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd24d"/>
+      <stop offset="1" stop-color="#f0a92b"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="104" fill="url(#bg)"/>
+
+  <!-- the manjaro mark, rendered as the bot's body -->
+  <g fill="#0d5f47" opacity="0.18">
+    <rect x="150" y="150" width="60" height="212" rx="10"/>
+    <rect x="226" y="150" width="60" height="212" rx="10"/>
+    <rect x="302" y="150" width="60" height="212" rx="10"/>
+  </g>
+
+  <!-- juggled packages, mid-air -->
+  <g stroke="#8a6620" stroke-width="5" stroke-linejoin="round">
+    <g transform="translate(126 132) rotate(-18)">
+      <rect x="-27" y="-27" width="54" height="54" rx="7" fill="url(#box)"/>
+      <path d="M-27 -4 h54 M0 -27 v54" stroke-width="4"/>
+    </g>
+    <g transform="translate(386 118) rotate(14)">
+      <rect x="-24" y="-24" width="48" height="48" rx="6" fill="url(#box)"/>
+      <path d="M-24 -3 h48 M0 -24 v48" stroke-width="4"/>
+    </g>
+  </g>
+
+  <!-- chameleon head -->
+  <g>
+    <path d="M182 300 q-14 -96 74 -104 q92 -8 96 78 q4 74 -76 82 q-82 8 -94 -56 z"
+          fill="#1f7a5c" stroke="#0d5f47" stroke-width="7"/>
+    <!-- curled tail, the chameleon giveaway -->
+    <path d="M186 352 q-40 34 -26 68 q14 32 44 18 q22 -12 8 -30 q-12 -14 -24 0"
+          fill="none" stroke="#1f7a5c" stroke-width="24" stroke-linecap="round"/>
+    <path d="M186 352 q-40 34 -26 68 q14 32 44 18 q22 -12 8 -30 q-12 -14 -24 0"
+          fill="none" stroke="#0d5f47" stroke-width="6" stroke-linecap="round" opacity="0.55"/>
+  </g>
+
+  <!-- hard hat: this bot builds things -->
+  <g stroke="#b8791b" stroke-width="7" stroke-linejoin="round">
+    <path d="M186 216 q0 -78 70 -78 q70 0 70 78 z" fill="url(#hat)"/>
+    <path d="M148 216 q108 -20 216 0 q0 20 -108 20 q-108 0 -108 -20 z" fill="url(#hat)"/>
+  </g>
+
+  <!-- googly eye, deadpan -->
+  <g>
+    <circle cx="306" cy="286" r="40" fill="#fdfdfb" stroke="#0d5f47" stroke-width="7"/>
+    <circle cx="316" cy="290" r="17" fill="#12312a"/>
+    <circle cx="322" cy="283" r="6" fill="#fff" opacity="0.9"/>
+  </g>
+
+  <!-- unbothered little smirk -->
+  <path d="M216 330 q28 20 56 4" fill="none" stroke="#0d5f47"
+        stroke-width="9" stroke-linecap="round"/>
+</svg>
