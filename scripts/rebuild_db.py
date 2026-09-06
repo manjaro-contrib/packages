@@ -64,7 +64,9 @@ def rebuild(
 
         db_file = os.path.join(workdir, f"{db_name}.db.tar.gz")
         cmd = ["repo-add", "--include-sigs", db_file, *paths]
-        key = os.environ.get("GPG_KEYID")
+        # a dry run uploads nothing, so it must not need a keyring either -
+        # signing here would fail on a runner that never imported the key
+        key = None if dry_run else os.environ.get("GPG_KEYID")
         if key:
             cmd[1:1] = ["--sign", "--key", key]
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)

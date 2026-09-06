@@ -35,7 +35,7 @@ jobs:
         run: scripts/import_key.sh
       - name: rebuild from the packages on R2
         env:
-          GPG_KEYID: ${{ inputs.dry_run && '' || vars.GPG_KEYID }}
+          GPG_KEYID: ${{ vars.GPG_KEYID }}
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
