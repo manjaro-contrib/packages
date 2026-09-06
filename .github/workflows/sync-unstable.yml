@@ -1,0 +1,53 @@
+name: sync-unstable
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # unlisting a package is what withdraws it, so the config landing is
+      # the trigger - a build may never run again for a retired package
+      - packages.yml
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Report what would be withdrawn without deleting
+        type: boolean
+        default: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # repo-remove must match the pacman generation that wrote the database
+    container: docker://ghcr.io/${{ github.repository }}/repo:latest
+    concurrency:
+      group: repo-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: import signing key
+        # a dry run rewrites nothing, so it needs no keyring
+        if: ${{ github.event_name == 'push' || !inputs.dry_run }}
+        env:
+          GPG_SECRET_BASE64: ${{ secrets.GPG_SECRET_BASE64 }}
+          GPG_KEYID: ${{ vars.GPG_KEYID }}
+        run: scripts/import_key.sh
+      - name: withdraw unlisted packages
+        env:
+          GPG_KEYID: ${{ vars.GPG_KEYID }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python3 scripts/sync_unstable.py \
+            ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '--dry-run' || '' }}
+      - name: verify the branch still resolves
+        # withdrawing rewrites the database; a broken result is worse than
+        # the drift it removed
+        if: ${{ github.event_name == 'push' || !inputs.dry_run }}
+        env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: python3 scripts/check_repo.py --branch unstable
