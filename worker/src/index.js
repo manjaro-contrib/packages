@@ -54,11 +54,13 @@ h1 { font-size: 1.1rem; font-weight: 600; }
        padding: .15rem 0; text-decoration: none; }
 .row:hover { text-decoration: underline; }
 i { opacity: .6; font-style: normal; }
+footer { margin-top: 2rem; opacity: .7; }
 </style>
 </head>
 <body>
 <h1>/${escapeHtml(prefix)}</h1>
 ${rows || '<p>empty</p>'}
+<footer>ISOs are at <a href="https://manjaro.download">manjaro.download</a></footer>
 </body>
 </html>
 `;
