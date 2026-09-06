@@ -4,7 +4,7 @@ A signed pacman repository for Manjaro, built centrally from package
 repositories across the `manjaro-contrib` organization.
 
 Package repos hold nothing but a `PKGBUILD` and carry the topic
-`manjaro-contrib-pkg`. This repository does the rest: it discovers them,
+`pkg`. This repository does the rest: it discovers them,
 builds what is missing, signs it, publishes it to R2, and tracks what is
 waiting to move between branches. No workflow files live in the package
 repos themselves.
@@ -58,7 +58,7 @@ unstable -> testing -> stable
 
 ```mermaid
 flowchart LR
-  R[package repos<br/>topic: manjaro-contrib-pkg] --> C[check]
+  R[package repos<br/>topic: pkg] --> C[check]
   C -->|missing artifact| B[build]
   B --> P[publish]
   P --> U[(unstable)]
@@ -103,7 +103,7 @@ pinning an older version rolls back, deleting an entry withdraws a package.
 ### Adding a package
 
 Create a repository containing a `PKGBUILD`, add the topic
-`manjaro-contrib-pkg`, and it is picked up on the next run. To track an AUR
+`pkg`, and it is picked up on the next run. To track an AUR
 Add it to [`packages.yml`](packages.yml), which inventories every package
 this repository builds. Give it an `upstream` to have update PRs opened
 automatically when that source moves; omit it for packages maintained

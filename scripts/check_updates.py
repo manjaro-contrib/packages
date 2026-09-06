@@ -21,7 +21,7 @@ import urllib.request
 
 from release_store import get_release, has_assets
 
-TOPIC = "manjaro-contrib-pkg"
+TOPIC = "pkg"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Cloudflare answers the default Python-urllib agent with 403, which would
 # otherwise look like "artifact missing" and rebuild every package forever.
