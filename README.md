@@ -18,11 +18,16 @@ Import and locally sign the repository key:
 ```sh
 curl -O https://raw.githubusercontent.com/manjaro-contrib/packages/main/gpg-public-key.asc
 sudo pacman-key --add gpg-public-key.asc
-sudo pacman-key --lsign-key A44C644D792767CED7941AFEABB2075D5F310CF8
+sudo pacman-key --lsign-key A13A52A61B5D8836
 ```
 
-This is the same key that signs the Manjaro Sway repository, so anyone who
-already trusts that one needs no further import.
+This key is certified by the Manjaro Sway repository key
+(`A44C644D792767CED7941AFEABB2075D5F310CF8`), so if you already trust that
+one you can extend trust rather than verifying this key from scratch:
+
+```sh
+sudo pacman-key --lsign-key A44C644D792767CED7941AFEABB2075D5F310CF8
+```
 
 Until the key is trusted, `pacman -Sy` fails with `invalid or corrupted
 database (PGP signature)`. That is the signature check working, not a
@@ -155,14 +160,11 @@ GITHUB_TOKEN="$DISPATCH_TOKEN" python3 scripts/check_updates.py \
 ```
 
 The signing key is passphrase-less so unattended builds can use it. Anyone
-with access to the repository secrets can therefore sign packages, and
-because this key also signs the Manjaro Sway repository the blast radius
-spans both; treat `GPG_SECRET_BASE64` as production credentials.
+with access to the repository secrets can therefore sign packages; treat
+`GPG_SECRET_BASE64` as production credentials and keep the revocation
+certificate somewhere durable.
 
-The key expires 2027-06-07. Extend it before then, or verification breaks
-for every consumer until they refresh it.
-
-Rotating the key leaves published artifacts signed by the old one: run the
-`resign` workflow for each branch afterwards, and note that release assets
-stored for build reuse keep their original signature, so a reused build
-must be rebuilt rather than republished.
+It is a key of its own rather than the Manjaro Sway key, so a compromise
+here is contained to this repository and can be revoked without touching
+that one. The certification from the Sway key is what carries trust
+across; renewing or replacing it does not require re-signing packages.
