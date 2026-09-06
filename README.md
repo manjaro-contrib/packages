@@ -155,7 +155,7 @@ the fastest way to check a change before pushing it:
 
 ```sh
 set -a && . ./.env && set +a
-GITHUB_TOKEN="$DISPATCH_TOKEN" python3 scripts/check_updates.py \
+GITHUB_TOKEN="$(python3 scripts/app_token.py)" python3 scripts/check_updates.py \
   --org manjaro-contrib --repo-url "$REPO_URL"
 ```
 
