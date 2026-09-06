@@ -16,10 +16,13 @@ Served from <https://packages.manjaro.download>.
 Import and locally sign the repository key:
 
 ```sh
-curl -O https://raw.githubusercontent.com/manjaro-contrib/packages/main/gpg-public-key.asc
-sudo pacman-key --add gpg-public-key.asc
+sudo pacman-key --keyserver keyserver.ubuntu.com --recv-keys A13A52A61B5D8836
 sudo pacman-key --lsign-key A13A52A61B5D8836
 ```
+
+`keys.openpgp.org` serves the key without its identity, since that server
+verifies an address before publishing one; use a keyserver that carries the
+full key, or take it from [`gpg-public-key.asc`](gpg-public-key.asc) here.
 
 The key is also certified by the Manjaro Sway repository key
 (`A44C644D792767CED7941AFEABB2075D5F310CF8`), which is evidence of who it
