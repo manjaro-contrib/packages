@@ -87,7 +87,8 @@ upload.
 | `build-publish` | cron, dispatch, `repository_dispatch` | discovers, builds, signs, publishes to `unstable` |
 | `promotion-proposal` | cron, after a branch changes | opens a PR moving a branch manifest up to its source |
 | `apply-manifest` | merge of `branches/*.yml` | reconciles the branch on R2 to its manifest |
-| `repo-remove` | manual | deletes a package from branches and the database |
+| `repo-remove` | manual | pulls a broken package immediately, without waiting for a config change |
+| `sync-unstable` | on `packages.yml` | withdraws packages from `unstable` once they are unlisted |
 | `update-upstreams` | cron | opens PRs when a tracked AUR package changes |
 | `sync-codeowners` | on `packages.yml`, cron | writes CODEOWNERS into each package repo from `maintainers` |
 | `sync-package-list` | cron | opens a PR adding repos that carry the topic but are missing from `packages.yml` |
@@ -111,6 +112,14 @@ to its source, and `apply-manifest` reconciles the bucket on merge.
 Reviewing the diff is the approval step, so what shipped and who approved
 it is in git history. Editing a manifest by hand works the same way -
 pinning an older version rolls back, deleting an entry withdraws a package.
+
+`unstable` has no manifest, because it is built into rather than promoted
+into. [`packages.yml`](packages.yml) plays that role instead: it already
+authorises builds, and `sync-unstable` makes it authoritative for what
+stays published, so unlisting a package withdraws it there too. Every
+branch is therefore declarative, and `repo-remove` is left for what it is
+actually good for - pulling a broken package immediately, without waiting
+for a config change to merge.
 
 ### Adding a package
 
