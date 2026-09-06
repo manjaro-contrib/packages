@@ -19,14 +19,12 @@ jobs:
   remove:
     runs-on: ubuntu-24.04
     # repo-remove must match the pacman generation that wrote the database
-    container: docker://manjarolinux/base:latest
+    container: docker://ghcr.io/${{ github.repository }}/repo:latest
     concurrency:
       group: repo-publish
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: install repo tooling
-        run: pacman -Syu --noconfirm --needed pacman-contrib python python-boto3 gnupg
       - name: import signing key
         env:
           GPG_SECRET_BASE64: ${{ secrets.GPG_SECRET_BASE64 }}

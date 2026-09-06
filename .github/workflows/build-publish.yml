@@ -55,22 +55,14 @@ jobs:
     if: needs.check.outputs.has_pending == 'true'
     runs-on: ubuntu-24.04
     container:
-      image: manjarolinux/base:latest
-      # makepkg refuses to run as root; options give the unprivileged user sudo
+      # the builder user and toolchain are baked in
+      image: ghcr.io/${{ github.repository }}/builder:latest
       options: --security-opt seccomp=unconfined
     strategy:
       fail-fast: false
       matrix:
         package: ${{ fromJSON(needs.check.outputs.pending) }}
     steps:
-      - name: install build tooling
-        env:
-          GPG_KEYID: ${{ vars.GPG_KEYID }}
-        run: |
-          pacman -Syu --noconfirm --needed base-devel git sudo python gnupg curl
-          # the image may already ship a builder account
-          id -u builder >/dev/null 2>&1 || useradd -m builder
-          echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
       - name: enable the contrib repo for dependency resolution
         # packages here depend on each other - flashfocus needs
         # python-xpybutil - and those exist in no upstream manjaro repo
@@ -178,7 +170,7 @@ jobs:
     runs-on: ubuntu-24.04
     # repo-add must come from the same pacman generation that built the
     # packages; Ubuntu's build rejects them as "not a package file".
-    container: docker://manjarolinux/base:latest
+    container: docker://ghcr.io/${{ github.repository }}/repo:latest
     concurrency:
       group: repo-publish
       cancel-in-progress: false
@@ -190,8 +182,6 @@ jobs:
           pattern: pkg-*
           path: packages
           merge-multiple: true
-      - name: install repo tooling
-        run: pacman -Syu --noconfirm --needed pacman-contrib python python-boto3 gnupg
       - name: import signing key
         env:
           GPG_SECRET_BASE64: ${{ secrets.GPG_SECRET_BASE64 }}
