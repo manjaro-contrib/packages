@@ -1,0 +1,50 @@
+name: check-upstream-dupes
+
+on:
+  schedule:
+    # weekly: a package appearing upstream is not urgent, but going
+    # unnoticed for months means shipping a needless duplicate
+    - cron: '0 6 * * 1'
+  push:
+    branches: [main]
+    paths:
+      - packages.yml
+      - scripts/check_upstream_dupes.py
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: install tooling
+        run: pip install pyyaml
+      - name: check against the manjaro repositories
+        id: check
+        run: |
+          python3 scripts/check_upstream_dupes.py --json > /tmp/dupes.json || true
+          python3 scripts/check_upstream_dupes.py 2>/tmp/report.txt || true
+          {
+            echo 'report<<EOF'
+            cat /tmp/report.txt
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+          echo "count=$(jq '.redundant | length' /tmp/dupes.json)" >> "$GITHUB_OUTPUT"
+      - name: summarise
+        run: |
+          {
+            echo '## Packages upstream now ships'
+            echo
+            echo '```'
+            cat /tmp/report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: fail when something is redundant
+        # a non-zero exit is the signal; the summary above says what
+        if: steps.check.outputs.count != '0'
+        run: |
+          echo "::error::${{ steps.check.outputs.count }} package(s) are now shipped by manjaro; drop them or record an override in packages.yml"
+          exit 1

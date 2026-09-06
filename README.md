@@ -91,6 +91,7 @@ upload.
 | `update-upstreams` | cron | opens PRs when a tracked AUR package changes |
 | `sync-codeowners` | on `packages.yml`, cron | writes CODEOWNERS into each package repo from `maintainers` |
 | `sync-package-list` | cron | opens a PR adding repos that carry the topic but are missing from `packages.yml` |
+| `check-upstream-dupes` | weekly, on `packages.yml` | reports packages Manjaro now ships itself |
 | `sync-edition-topics` | cron | tags each repo `edition-<name>` for every edition whose settings package depends on it |
 | `build-images` | on `images/`, weekly | publishes the prebuilt toolchain images the other jobs run in |
 
@@ -116,7 +117,13 @@ topic makes it discoverable, but a package is built only once it is also
 listed in [`packages.yml`](packages.yml) - `sync-package-list` opens that
 pull request for you, and merging it is what authorises the build. To track an AUR
 Add it to [`packages.yml`](packages.yml), which inventories every package
-this repository builds. Give it an `upstream` to have update PRs opened
+this repository builds.
+
+An overlay only earns its keep where the distribution falls short, so
+`check-upstream-dupes` compares the list against Manjaro's own
+repositories weekly and fails when one of ours is shipped there too. If
+that duplication is deliberate, say why with an `override` key and the
+check reports it as intentional instead. Give it an `upstream` to have update PRs opened
 automatically when that source moves; omit it for packages maintained
 here. `maintainers` is also the source for each package repo's
 CODEOWNERS, so listing someone there makes them a reviewer on every pull
