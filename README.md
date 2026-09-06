@@ -98,15 +98,17 @@ sync before it happens.
 
 Create a repository containing a `PKGBUILD`, add the topic
 `manjaro-contrib-pkg`, and it is picked up on the next run. To track an AUR
-package for automatic update PRs, add it to
-[`packages.yml`](packages.yml) with its upstream and maintainers.
+Add it to [`packages.yml`](packages.yml), which inventories every package
+this repository builds. Give it an `upstream` to have update PRs opened
+automatically when that source moves; omit it for packages maintained
+here.
 
 ## Repository layout
 
 ```
 scripts/          the engine; each script is runnable on its own
 worker/           cloudflare worker serving the bucket with directory listings
-packages.yml      packages tracking an external upstream
+packages.yml      every package built here, and what it tracks
 gpg-public-key.asc  the repository signing key
 ```
 

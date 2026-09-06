@@ -49,8 +49,13 @@ def pr_exists(org: str, name: str, token: str) -> bool:
 
 
 def sync_package(org: str, name: str, cfg: dict, token: str) -> bool:
-    upstream = cfg["upstream"]
-    maintainers = cfg.get("maintainers", [])
+    upstream = (cfg or {}).get("upstream")
+    if not upstream:
+        # packages maintained here have no external source to track; they
+        # are still listed so packages.yml inventories the whole repository
+        log(f"{name}: no upstream, nothing to track")
+        return True
+    maintainers = (cfg or {}).get("maintainers", [])
     clone_url = f"https://x-access-token:{token}@github.com/{org}/{name}.git"
 
     if pr_exists(org, name, token):
