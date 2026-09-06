@@ -135,6 +135,16 @@ here. `maintainers` is also the source for each package repo's
 CODEOWNERS, so listing someone there makes them a reviewer on every pull
 request in that repository.
 
+### Consistency
+
+The state hash says a branch changed, not that it works - a partial upload
+produces a new hash just as a good one does. `check-repo` verifies what a
+pacman client actually depends on: every database entry names a file that
+is present at the recorded size, every published package has an entry,
+`.db` and `.files` agree, and packages and databases are signed. It runs
+after each publish for the branch just written, and daily across all of
+them, keeping findings in a `repo-inconsistent` issue.
+
 ## Repository layout
 
 ```
