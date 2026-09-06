@@ -84,6 +84,7 @@ upload.
 | `update-upstreams` | cron | opens PRs when a tracked AUR package changes |
 | `promotion-backlog` | cron, after the above | keeps one issue per branch listing what is pending |
 | `sync-codeowners` | on `packages.yml`, cron | writes CODEOWNERS into each package repo from `maintainers` |
+| `sync-package-list` | cron | opens a PR adding repos that carry the topic but are missing from `packages.yml` |
 
 Every workflow that writes the database shares the `repo-publish`
 concurrency group, so publishes, promotions and removals queue rather than
