@@ -70,10 +70,8 @@ def sync_repo(org: str, name: str, maintainers: list[str], token: str) -> bool:
     body = {
         "message": "chore: sync CODEOWNERS from packages.yml",
         "content": base64.b64encode(wanted.encode()).decode(),
-        "committer": {
-            "name": "manjaro-contrib-bot",
-            "email": "bot@manjaro-contrib",
-        },
+        # no explicit committer: github signs a commit only when it authors
+        # one itself, and naming a committer opts out of that
     }
     if sha:
         body["sha"] = sha
