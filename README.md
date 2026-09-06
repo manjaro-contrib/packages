@@ -82,6 +82,7 @@ upload.
 | `repo-remove` | manual | deletes a package from branches and the database |
 | `update-upstreams` | cron | opens PRs when a tracked AUR package changes |
 | `promotion-backlog` | cron, after the above | keeps one issue per branch listing what is pending |
+| `sync-codeowners` | on `packages.yml`, cron | writes CODEOWNERS into each package repo from `maintainers` |
 
 Every workflow that writes the database shares the `repo-publish`
 concurrency group, so publishes, promotions and removals queue rather than
@@ -101,7 +102,9 @@ Create a repository containing a `PKGBUILD`, add the topic
 Add it to [`packages.yml`](packages.yml), which inventories every package
 this repository builds. Give it an `upstream` to have update PRs opened
 automatically when that source moves; omit it for packages maintained
-here.
+here. `maintainers` is also the source for each package repo's
+CODEOWNERS, so listing someone there makes them a reviewer on every pull
+request in that repository.
 
 ## Repository layout
 
