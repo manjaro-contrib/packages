@@ -103,8 +103,10 @@ pinning an older version rolls back, deleting an entry withdraws a package.
 
 ### Adding a package
 
-Create a repository containing a `PKGBUILD`, add the topic
-`pkg`, and it is picked up on the next run. To track an AUR
+Create a repository containing a `PKGBUILD` and add the topic `pkg`. The
+topic makes it discoverable, but a package is built only once it is also
+listed in [`packages.yml`](packages.yml) - `sync-package-list` opens that
+pull request for you, and merging it is what authorises the build. To track an AUR
 Add it to [`packages.yml`](packages.yml), which inventories every package
 this repository builds. Give it an `upstream` to have update PRs opened
 automatically when that source moves; omit it for packages maintained
