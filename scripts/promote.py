@@ -3,7 +3,8 @@
 
 Copies .pkg.tar.zst objects (and their .sig if present) from the source
 branch prefix to the target prefix without egress, then rebuilds the target
-branch's pacman database locally and re-uploads it.
+branch's pacman database locally and re-uploads it. Versions the copy
+supersedes are pruned from the target, matching what publish.py does.
 
 --dry-run resolves and classifies every package against the target without
 writing anything, which is the only safe way to inspect a full ALL sync.
@@ -17,6 +18,7 @@ import tempfile
 
 import boto3
 from botocore.exceptions import ClientError
+from publish import prune_superseded
 from repo_remove import pkgname_of
 from repo_state import write_state
 
@@ -220,6 +222,10 @@ def main() -> int:
         if key:
             repo_add[1:1] = ["--sign", "--key", key]
         subprocess.run(repo_add, check=True)
+
+        # promote only ever adds; without this the versions it supersedes
+        # linger in the target bucket, invisible to pacman but still billed
+        prune_superseded(s3, bucket, dst_prefix, copied)
 
         for suffix in DB_SUFFIXES:
             for name in (f"{args.db_name}{suffix}", f"{args.db_name}{suffix}.sig"):

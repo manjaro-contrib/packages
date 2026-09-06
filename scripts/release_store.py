@@ -67,10 +67,19 @@ def get_release(repo: str, version: str, token: str) -> dict | None:
 
 
 def has_assets(release: dict | None, artifacts: list[str]) -> bool:
+    """True only if the release holds every artifact *and* its signature.
+
+    The repository is signed, so a release predating signing must rebuild
+    rather than be reused: republishing it would put an unsigned package
+    into a signed repository, where pacman then rejects it.
+    """
     if release is None:
         return False
     names = {a["name"] for a in release.get("assets", [])}
-    return all(asset_name(a) in names for a in artifacts)
+    return all(
+        asset_name(a) in names and asset_name(a + ".sig") in names
+        for a in artifacts
+    )
 
 
 def ensure_release(repo: str, version: str, token: str) -> dict:
@@ -128,7 +137,10 @@ def download(
         raise RuntimeError(f"no release for {version} on {repo}")
     by_name = {a["name"]: a for a in release.get("assets", [])}
     os.makedirs(dest, exist_ok=True)
-    for artifact in artifacts:
+    # has_assets() gates reuse on the signature being present, so fetch it
+    # alongside the package or publish would upload an unsigned artifact
+    wanted = [n for a in artifacts for n in (a, a + ".sig")]
+    for artifact in wanted:
         asset = by_name.get(asset_name(artifact))
         if asset is None:
             raise RuntimeError(f"{artifact} missing from release {version}")
