@@ -24,9 +24,9 @@ sudo pacman-key --lsign-key A13A52A61B5D8836
 verifies an address before publishing one; use a keyserver that carries the
 full key, or take it from [`gpg-public-key.asc`](gpg-public-key.asc) here.
 
-The key is also certified by the Manjaro Sway repository key
-(`A44C644D792767CED7941AFEABB2075D5F310CF8`), which is evidence of who it
-belongs to if you already trust that one. Pacman does not follow that
+The key is also certified by Jonas Strassel's key
+(`A44C644D792767CED7941AFEABB2075D5F310CF8`, in `manjaro-trusted`), which
+vouches for it belonging to this project. Pacman does not follow that
 chain, though: it requires the local signature above regardless.
 
 Until the key is locally signed, `pacman -Sy` fails with `signature from
@@ -164,7 +164,7 @@ with access to the repository secrets can therefore sign packages; treat
 `GPG_SECRET_BASE64` as production credentials and keep the revocation
 certificate somewhere durable.
 
-It is a key of its own rather than the Manjaro Sway key, so a compromise
-here is contained to this repository and can be revoked without touching
-that one. The certification from the Sway key is what carries trust
-across; renewing or replacing it does not require re-signing packages.
+It signs nothing but this repository, so a compromise here is contained
+and the key can be revoked without affecting anything else. The
+certification on it only attests to who it belongs to; renewing or
+replacing that does not require re-signing packages.
