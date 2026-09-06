@@ -82,9 +82,10 @@ upload.
 | `apply-manifest` | merge of `branches/*.yml` | reconciles the branch on R2 to its manifest |
 | `repo-remove` | manual | deletes a package from branches and the database |
 | `update-upstreams` | cron | opens PRs when a tracked AUR package changes |
-| `promotion-backlog` | cron, after the above | keeps one issue per branch listing what is pending |
 | `sync-codeowners` | on `packages.yml`, cron | writes CODEOWNERS into each package repo from `maintainers` |
 | `sync-package-list` | cron | opens a PR adding repos that carry the topic but are missing from `packages.yml` |
+| `sync-edition-topics` | cron | tags each repo `edition-<name>` for every edition whose settings package depends on it |
+| `build-images` | on `images/`, weekly | publishes the prebuilt toolchain images the other jobs run in |
 
 Every workflow that writes the database shares the `repo-publish`
 concurrency group, so publishes, promotions and removals queue rather than
@@ -118,6 +119,7 @@ request in that repository.
 
 ```
 scripts/          the engine; each script is runnable on its own
+images/           the container images the workflows run in
 branches/         the package set each branch carries, applied on merge
 worker/           cloudflare worker serving the bucket with directory listings
 packages.yml      every package built here, and what it tracks

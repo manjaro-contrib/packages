@@ -1,0 +1,38 @@
+name: build-images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - images/Containerfile
+      - .github/workflows/build-images.yml
+  schedule:
+    # weekly, so the baked packages do not drift far behind the archive
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        target: [repo, builder]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: images
+          file: images/Containerfile
+          target: ${{ matrix.target }}
+          push: true
+          tags: ghcr.io/${{ github.repository }}/${{ matrix.target }}:latest
+          # the base image moves under us, so never trust a cached layer
+          no-cache: true

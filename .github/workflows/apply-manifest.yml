@@ -19,7 +19,7 @@ jobs:
   apply:
     runs-on: ubuntu-24.04
     # repo-add must match the pacman generation that built the packages
-    container: docker://manjarolinux/base:latest
+    container: docker://ghcr.io/${{ github.repository }}/repo:latest
     concurrency:
       group: repo-publish
       cancel-in-progress: false
@@ -30,8 +30,6 @@ jobs:
         branch: [testing, stable]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: install repo tooling
-        run: pacman -Syu --noconfirm --needed pacman-contrib python python-boto3 python-yaml gnupg
       - name: import signing key
         if: ${{ !inputs.dry_run }}
         env:
