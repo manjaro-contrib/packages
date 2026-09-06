@@ -91,6 +91,7 @@ upload.
 | `update-upstreams` | cron | opens PRs when a tracked AUR package changes |
 | `sync-codeowners` | on `packages.yml`, cron | writes CODEOWNERS into each package repo from `maintainers` |
 | `sync-package-list` | cron | opens a PR adding repos that carry the topic but are missing from `packages.yml` |
+| `check-upstream-dupes` | weekly, on `packages.yml` | keeps an issue listing packages Arch now ships |
 | `sync-edition-topics` | cron | tags each repo `edition-<name>` for every edition whose settings package depends on it |
 | `build-images` | on `images/`, weekly | publishes the prebuilt toolchain images the other jobs run in |
 
@@ -116,7 +117,19 @@ topic makes it discoverable, but a package is built only once it is also
 listed in [`packages.yml`](packages.yml) - `sync-package-list` opens that
 pull request for you, and merging it is what authorises the build. To track an AUR
 Add it to [`packages.yml`](packages.yml), which inventories every package
-this repository builds. Give it an `upstream` to have update PRs opened
+this repository builds.
+
+An overlay only earns its keep where the distribution falls short, so
+`check-upstream-dupes` compares the list against Arch's repositories
+weekly. Arch is checked rather than Manjaro because a package reaching
+Arch flows downstream on its own, which is the earliest point at which
+ours becomes redundant.
+
+Findings are kept in one `upstream-redundant` issue rather than failing
+the run: the issue is opened when a package becomes redundant, edited as
+the list changes, and closed once nothing is left. If the duplication is
+deliberate, say why with an `override` key and the check lists it as
+intentional instead. Give it an `upstream` to have update PRs opened
 automatically when that source moves; omit it for packages maintained
 here. `maintainers` is also the source for each package repo's
 CODEOWNERS, so listing someone there makes them a reviewer on every pull

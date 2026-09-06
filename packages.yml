@@ -4,6 +4,9 @@
 #   when it moves ahead. Omit it for packages maintained here, which
 #   have no external source.
 # maintainers: requested as reviewers on those PRs.
+# override: why we ship a package arch already ships. Without this,
+#   check-upstream-dupes reports it as redundant, since an overlay package
+#   that duplicates the distribution only decides which one pacman picks.
 
 packages:
   # tracked against the AUR
