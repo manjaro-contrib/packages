@@ -9,10 +9,18 @@ jobs:
   update:
     runs-on: ubuntu-24.04
     steps:
+      - name: mint an app token
+        # app-authored commits are signed by github; a PAT's are not
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: sync packages
         env:
-          GITHUB_TOKEN: ${{ secrets.DISPATCH_TOKEN || github.token }}
+          GITHUB_TOKEN: ${{ steps.app.outputs.token }}
         run: |
           pip install pyyaml
           python3 scripts/track_upstreams.py --org "${{ github.repository_owner }}"

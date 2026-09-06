@@ -128,12 +128,16 @@ serve so mirror tooling can poll a hash instead of walking the tree.
 
 ## Operating
 
-Configuration lives in GitHub. Variables: `REPO_URL`, `GPG_KEYID`.
-Secrets: `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
-`R2_BUCKET`, `GPG_SECRET_BASE64`, `DISPATCH_TOKEN`.
+Configuration lives in GitHub. Variables: `REPO_URL`, `GPG_KEYID`,
+`APP_ID`. Secrets: `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`,
+`R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `GPG_SECRET_BASE64`,
+`APP_PRIVATE_KEY`.
 
-`DISPATCH_TOKEN` is a fine-grained token over the organization needing
-Contents read/write, Pull requests read/write, and Issues read/write.
+The workflows authenticate as a GitHub App installed on the organization,
+minting a short-lived token per run. Commits an App makes through the API
+are signed by GitHub, so `required_signatures` can be enforced without any
+signing key in CI, and the App's permissions cover every repository in the
+organization without a long-lived personal token.
 
 The scripts run locally against the same environment variables, which is
 the fastest way to check a change before pushing it:
