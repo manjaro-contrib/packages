@@ -92,6 +92,8 @@ upload.
 | `sync-codeowners` | on `packages.yml`, cron | writes CODEOWNERS into each package repo from `maintainers` |
 | `sync-package-list` | cron | opens a PR adding repos that carry the topic but are missing from `packages.yml` |
 | `check-upstream-dupes` | weekly, on `packages.yml` | keeps an issue listing packages Arch now ships |
+| `check-repo` | daily, after each publish | verifies a published branch actually resolves |
+| `rebuild-db` | manual | regenerates a branch's databases from the packages on R2 |
 | `sync-edition-topics` | cron | tags each repo `edition-<name>` for every edition whose settings package depends on it |
 | `build-images` | on `images/`, weekly | publishes the prebuilt toolchain images the other jobs run in |
 
@@ -144,6 +146,14 @@ is present at the recorded size, every published package has an entry,
 `.db` and `.files` agree, and packages and databases are signed. It runs
 after each publish for the branch just written, and daily across all of
 them, keeping findings in a `repo-inconsistent` issue.
+
+`rebuild-db` is the repair. Every other database write is incremental,
+which is how a database comes to describe something other than the bucket;
+this one lists the branch and runs `repo-add` over everything it finds, so
+the packages on R2 are the authority. It defaults to a dry run, holds the
+same `repo-publish` lock as publishing, and re-runs `check-repo` after
+writing - a rebuild that left the branch inconsistent would be worse than
+the drift it repaired.
 
 ## Repository layout
 
