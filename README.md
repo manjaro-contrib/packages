@@ -24,6 +24,11 @@ sudo pacman-key --lsign-key A13A52A61B5D8836
 verifies an address before publishing one; use a keyserver that carries the
 full key, or take it from [`gpg-public-key.asc`](gpg-public-key.asc) here.
 
+The key is also certified by Jonas Strassel's key
+(`A44C644D792767CED7941AFEABB2075D5F310CF8`, in `manjaro-trusted`), which
+vouches for it belonging to this project. Pacman does not follow that
+chain, though: it requires the local signature above regardless.
+
 Until the key is locally signed, `pacman -Sy` fails with `signature from
 "manjaro-contrib build server" is unknown trust`. That is the signature
 check working, not a broken mirror.
@@ -160,4 +165,6 @@ with access to the repository secrets can therefore sign packages; treat
 certificate somewhere durable.
 
 It signs nothing but this repository, so a compromise here is contained
-and the key can be revoked without affecting anything else.
+and the key can be revoked without affecting anything else. The
+certification on it only attests to who it belongs to; renewing or
+replacing that does not require re-signing packages.
