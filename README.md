@@ -78,7 +78,8 @@ upload.
 | Workflow | Trigger | Does |
 | --- | --- | --- |
 | `build-publish` | cron, dispatch, `repository_dispatch` | discovers, builds, signs, publishes to `unstable` |
-| `promote` | manual | copies binaries between branches server-side |
+| `promotion-proposal` | cron, after a branch changes | opens a PR moving a branch manifest up to its source |
+| `apply-manifest` | merge of `branches/*.yml` | reconciles the branch on R2 to its manifest |
 | `repo-remove` | manual | deletes a package from branches and the database |
 | `update-upstreams` | cron | opens PRs when a tracked AUR package changes |
 | `promotion-backlog` | cron, after the above | keeps one issue per branch listing what is pending |
@@ -90,10 +91,14 @@ clobber each other.
 
 ### Promoting
 
-Run the `promote` workflow with `dry_run` ticked first. It classifies each
-package against the target branch as new, replace, overwrite, identical or
-missing, and writes nothing, which is the only safe way to review an `ALL`
-sync before it happens.
+Promotion is declarative. `branches/testing.yml` and `branches/stable.yml`
+name the exact version each branch carries, and merging a change to one is
+what promotes: `promotion-proposal` opens a pull request moving a branch up
+to its source, and `apply-manifest` reconciles the bucket on merge.
+
+Reviewing the diff is the approval step, so what shipped and who approved
+it is in git history. Editing a manifest by hand works the same way -
+pinning an older version rolls back, deleting an entry withdraws a package.
 
 ### Adding a package
 
@@ -110,6 +115,7 @@ request in that repository.
 
 ```
 scripts/          the engine; each script is runnable on its own
+branches/         the package set each branch carries, applied on merge
 worker/           cloudflare worker serving the bucket with directory listings
 packages.yml      every package built here, and what it tracks
 gpg-public-key.asc  the repository signing key

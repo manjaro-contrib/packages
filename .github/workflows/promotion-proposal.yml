@@ -1,0 +1,41 @@
+name: promotion-proposal
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+  workflow_run:
+    # a branch gaining packages is what makes the next one promotable
+    workflows: [apply-manifest, build-publish]
+    types: [completed]
+
+jobs:
+  propose:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: promotion-proposal
+      cancel-in-progress: false
+    strategy:
+      # sequential: the stable proposal must see any testing manifest the
+      # testing proposal just wrote
+      max-parallel: 1
+      matrix:
+        branch: [testing, stable]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: install tooling
+        run: pip install boto3 pyyaml
+      - name: propose ${{ matrix.branch }} promotion
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python3 scripts/propose_promotion.py \
+            --repo "${{ github.repository }}" \
+            --branch "${{ matrix.branch }}"

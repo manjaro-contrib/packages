@@ -1,0 +1,50 @@
+name: apply-manifest
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - branches/*.yml
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Report the plan without writing
+        type: boolean
+        default: false
+
+env:
+  ARCH: x86_64
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    # repo-add must match the pacman generation that built the packages
+    container: docker://manjarolinux/base:latest
+    concurrency:
+      group: repo-publish
+      cancel-in-progress: false
+    strategy:
+      # sequential: both legs rewrite databases under the same lock
+      max-parallel: 1
+      matrix:
+        branch: [testing, stable]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: install repo tooling
+        run: pacman -Syu --noconfirm --needed pacman-contrib python python-boto3 python-yaml gnupg
+      - name: import signing key
+        if: ${{ !inputs.dry_run }}
+        env:
+          GPG_SECRET_BASE64: ${{ secrets.GPG_SECRET_BASE64 }}
+          GPG_KEYID: ${{ vars.GPG_KEYID }}
+        run: scripts/import_key.sh
+      - name: reconcile ${{ matrix.branch }}
+        env:
+          GPG_KEYID: ${{ vars.GPG_KEYID }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python3 scripts/apply_manifest.py --branch "${{ matrix.branch }}" \
+            --arch "$ARCH" ${{ inputs.dry_run && '--dry-run' || '' }}

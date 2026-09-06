@@ -13,26 +13,16 @@ import os
 import subprocess
 import sys
 
-import boto3
 from botocore.exceptions import ClientError
+from repo_common import DB_SUFFIXES, s3_client
 from repo_remove import artifacts_for, pkgname_of
 from repo_state import write_state
-
-DB_SUFFIXES = [".db", ".db.tar.gz", ".files", ".files.tar.gz"]
 
 
 def log(msg: str) -> None:
     print(msg, file=sys.stderr, flush=True)
 
 
-def s3_client():
-    return boto3.client(
-        "s3",
-        endpoint_url=os.environ["R2_ENDPOINT"],
-        aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
-        region_name="auto",
-    )
 
 
 def prune_superseded(s3, bucket: str, prefix: str, published: list[str]) -> None:
