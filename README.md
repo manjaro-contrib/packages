@@ -16,22 +16,22 @@ Served from <https://packages.manjaro.download>.
 Import and locally sign the repository key:
 
 ```sh
-curl -O https://raw.githubusercontent.com/manjaro-contrib/packages/main/gpg-public-key.asc
-sudo pacman-key --add gpg-public-key.asc
+sudo pacman-key --keyserver keyserver.ubuntu.com --recv-keys A13A52A61B5D8836
 sudo pacman-key --lsign-key A13A52A61B5D8836
 ```
 
-This key is certified by the Manjaro Sway repository key
-(`A44C644D792767CED7941AFEABB2075D5F310CF8`), so if you already trust that
-one you can extend trust rather than verifying this key from scratch:
+`keys.openpgp.org` serves the key without its identity, since that server
+verifies an address before publishing one; use a keyserver that carries the
+full key, or take it from [`gpg-public-key.asc`](gpg-public-key.asc) here.
 
-```sh
-sudo pacman-key --lsign-key A44C644D792767CED7941AFEABB2075D5F310CF8
-```
+The key is also certified by the Manjaro Sway repository key
+(`A44C644D792767CED7941AFEABB2075D5F310CF8`), which is evidence of who it
+belongs to if you already trust that one. Pacman does not follow that
+chain, though: it requires the local signature above regardless.
 
-Until the key is trusted, `pacman -Sy` fails with `invalid or corrupted
-database (PGP signature)`. That is the signature check working, not a
-broken mirror.
+Until the key is locally signed, `pacman -Sy` fails with `signature from
+"manjaro-contrib build server" is unknown trust`. That is the signature
+check working, not a broken mirror.
 
 Then add the repository to `/etc/pacman.conf`, above `[core]`:
 
