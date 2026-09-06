@@ -138,10 +138,20 @@ def main() -> int:
             dest = os.path.join(workdir, name)
             s3.download_file(bucket, dst_prefix + name, dest)
             paths.append(dest)
+            # --include-sigs reads the signature from beside the package,
+            # so without fetching it the database would carry no %PGPSIG%
+            try:
+                s3.download_file(bucket, dst_prefix + name + ".sig", dest + ".sig")
+            except ClientError as e:
+                if e.response["Error"]["Code"] not in ("NoSuchKey", "404"):
+                    raise
 
         db_file = os.path.join(workdir, f"{args.db_name}.db.tar.gz")
         if paths:
-            cmd = ["repo-add", db_file, *paths]
+            # --include-sigs records each package's signature in the
+            # database, matching every Arch and Manjaro repository;
+            # --sign signs the database itself
+            cmd = ["repo-add", "--include-sigs", db_file, *paths]
             key = os.environ.get("GPG_KEYID")
             if key:
                 cmd[1:1] = ["--sign", "--key", key]

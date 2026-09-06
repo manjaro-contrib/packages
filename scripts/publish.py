@@ -67,11 +67,14 @@ def main() -> int:
             raise
         log("no database yet, repo-add will create one")
 
-    repo_add = ["repo-add", db_file, *packages]
+    # --include-sigs records each package's signature in the database, as
+    # every Arch and Manjaro repository does; tooling that reads a database
+    # expects the field, and pacman -Si can then report a package's signer
+    # without fetching it. --sign is unrelated: it signs the database
+    # itself, without which the package list is forgeable.
+    repo_add = ["repo-add", "--include-sigs", db_file, *packages]
     key = os.environ.get("GPG_KEYID")
     if key:
-        # --sign writes manjaro-contrib.db.sig; without it a signed package
-        # set still leaves the package list itself forgeable
         repo_add[1:1] = ["--sign", "--key", key]
     subprocess.run(repo_add, check=True)
 
