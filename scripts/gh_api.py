@@ -84,3 +84,65 @@ def commit_file(
     status, payload = api("PUT", f"/repos/{repo}/contents/{path}", token, body)
     if status not in (200, 201):
         raise RuntimeError(f"cannot write {path} ({status}): {payload}")
+
+
+def keep_issue(
+    repo: str, label: str, title: str, body: str, token: str
+) -> tuple[str, int] | None:
+    """Hold a single issue in sync with a recurring finding.
+
+    A scheduled check has no natural place to report to: failing the run
+    turns a check red for something that is not urgent, and opening an
+    issue per run buries the signal. So one issue per label is kept - it
+    is created when a finding appears, edited while it persists, and
+    closed once it is gone.
+
+    Returns the action taken and the issue number, or None if there was
+    nothing to report and no issue to close.
+    """
+    status, found = api(
+        "GET",
+        f"/repos/{repo}/issues?state=open&labels={label}&per_page=1",
+        token,
+    )
+    if status != 200:
+        raise RuntimeError(f"cannot list issues ({status}): {found}")
+    existing = found[0] if found else None
+
+    if not body:
+        if existing is None:
+            return None
+        status, payload = api(
+            "PATCH",
+            f"/repos/{repo}/issues/{existing['number']}",
+            token,
+            {"state": "closed", "state_reason": "completed"},
+        )
+        if status != 200:
+            raise RuntimeError(f"cannot close issue ({status}): {payload}")
+        return "closed", existing["number"]
+
+    if existing is None:
+        status, payload = api(
+            "POST",
+            f"/repos/{repo}/issues",
+            token,
+            {"title": title, "body": body, "labels": [label]},
+        )
+        if status not in (200, 201):
+            raise RuntimeError(f"cannot open issue ({status}): {payload}")
+        return "opened", payload["number"]
+
+    # rewriting an unchanged body would notify subscribers for nothing
+    if existing["body"] == body and existing["title"] == title:
+        return "unchanged", existing["number"]
+
+    status, payload = api(
+        "PATCH",
+        f"/repos/{repo}/issues/{existing['number']}",
+        token,
+        {"title": title, "body": body},
+    )
+    if status != 200:
+        raise RuntimeError(f"cannot update issue ({status}): {payload}")
+    return "updated", existing["number"]

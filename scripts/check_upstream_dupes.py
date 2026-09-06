@@ -13,17 +13,25 @@ has become redundant, giving time to drop it before the duplicate ships.
 Packages we deliberately override carry an `override` reason in
 packages.yml and are reported separately, so the decision is recorded
 rather than rediscovered.
+
+Findings are kept in a single labelled issue rather than failing the run:
+a package appearing upstream is worth acting on, but not urgently, and a
+red check for it would train everyone to ignore red checks. The issue is
+opened when a package becomes redundant, edited as the list changes, and
+closed once nothing is left.
 """
 
 import argparse
 import io
 import json
+import os
 import sys
 import tarfile
 import urllib.error
 import urllib.request
 
 import yaml
+from gh_api import keep_issue
 
 # arch's repositories, in the order pacman would search them
 REPOS = ["core", "extra", "multilib"]
@@ -60,12 +68,67 @@ def arch_packages(arch: str) -> dict[str, str]:
     return found
 
 
+LABEL = "upstream-redundant"
+TITLE = "Potentially redundant packages"
+
+
+def issue_body(redundant: list[dict], overridden: list[dict]) -> str:
+    """The issue text, or empty when there is nothing to report."""
+    if not redundant:
+        return ""
+    lines = [
+        "Arch now ships these packages, so this repository may not need to.",
+        "An overlay package that duplicates the distribution only decides",
+        "which copy pacman picks - and if ours is older, that is a downgrade.",
+        "",
+        "| package | arch version |",
+        "| --- | --- |",
+    ]
+    lines += [f"| `{e['package']}` | `{e['upstream']}` |" for e in redundant]
+    lines += [
+        "",
+        "Either drop the package from this repository, or record why we",
+        "override upstream in [`packages.yml`](packages.yml):",
+        "",
+        "```yaml",
+        f"{redundant[0]['package']}:",
+        "  override: why upstream's build is not enough",
+        "```",
+    ]
+    if overridden:
+        lines += [
+            "",
+            "<details><summary>Deliberate overrides</summary>",
+            "",
+            "| package | arch version | reason |",
+            "| --- | --- | --- |",
+        ]
+        lines += [
+            f"| `{e['package']}` | `{e['upstream']}` | {e['reason']} |"
+            for e in overridden
+        ]
+        lines += ["", "</details>"]
+    lines += [
+        "",
+        (
+            "<sub>Kept by `check-upstream-dupes`; closed automatically"
+            " once nothing is redundant.</sub>"
+        ),
+    ]
+    return "\n".join(lines)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="packages.yml")
     parser.add_argument("--arch", default="x86_64")
     parser.add_argument(
         "--json", action="store_true", help="emit the findings as json"
+    )
+    parser.add_argument(
+        "--issue",
+        metavar="OWNER/REPO",
+        help="keep the findings in a labelled issue on this repository",
     )
     args = parser.parse_args()
 
@@ -107,9 +170,20 @@ def main() -> int:
         log("or record why we override upstream by adding to packages.yml:")
         log("  <package>:")
         log("    override: why upstream's build is not enough")
-        return 1
+    else:
+        log(f"nothing redundant ({len(overridden)} deliberate override(s))")
 
-    log(f"nothing redundant ({len(overridden)} deliberate override(s))")
+    if args.issue:
+        token = os.environ["GITHUB_TOKEN"]
+        result = keep_issue(
+            args.issue, LABEL, TITLE, issue_body(redundant, overridden), token
+        )
+        if result is None:
+            log("no issue needed")
+        else:
+            action, number = result
+            log(f"issue #{number} {action}")
+
     return 0
 
 

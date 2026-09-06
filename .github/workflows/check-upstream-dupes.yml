@@ -17,22 +17,30 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      issues: write
+    concurrency:
+      group: check-upstream-dupes
+      cancel-in-progress: false
     steps:
+      - name: mint an app token
+        # the app carries issues: write; github.token would need the
+        # permission granted per workflow and cannot label across the org
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: install tooling
         run: pip install pyyaml
       - name: check against the arch repositories
-        id: check
+        # reports into a labelled issue rather than failing: a package
+        # appearing upstream deserves a decision, not a red check
+        env:
+          GITHUB_TOKEN: ${{ steps.app.outputs.token }}
         run: |
-          python3 scripts/check_upstream_dupes.py --json > /tmp/dupes.json || true
-          python3 scripts/check_upstream_dupes.py 2>/tmp/report.txt || true
-          {
-            echo 'report<<EOF'
-            cat /tmp/report.txt
-            echo EOF
-          } >> "$GITHUB_OUTPUT"
-          echo "count=$(jq '.redundant | length' /tmp/dupes.json)" >> "$GITHUB_OUTPUT"
+          python3 scripts/check_upstream_dupes.py \
+            --issue "${{ github.repository }}" 2>&1 | tee /tmp/report.txt
       - name: summarise
         run: |
           {
@@ -42,9 +50,3 @@ jobs:
             cat /tmp/report.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-      - name: fail when something is redundant
-        # a non-zero exit is the signal; the summary above says what
-        if: steps.check.outputs.count != '0'
-        run: |
-          echo "::error::${{ steps.check.outputs.count }} package(s) are now shipped by arch; drop them or record an override in packages.yml"
-          exit 1
