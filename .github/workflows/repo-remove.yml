@@ -17,7 +17,7 @@ on:
 
 jobs:
   remove:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     # repo-remove must match the pacman generation that wrote the database
     container: docker://ghcr.io/${{ github.repository }}/repo:latest
     concurrency:
