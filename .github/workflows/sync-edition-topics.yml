@@ -12,7 +12,7 @@ on:
 
 jobs:
   sync:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     concurrency:
       group: sync-edition-topics
       cancel-in-progress: false

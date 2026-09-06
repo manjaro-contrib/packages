@@ -18,7 +18,7 @@ env:
 
 jobs:
   check:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     outputs:
       pending: ${{ steps.check.outputs.pending }}
       has_pending: ${{ steps.check.outputs.has_pending }}
@@ -53,7 +53,7 @@ jobs:
   build:
     needs: check
     if: needs.check.outputs.has_pending == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     container:
       # the builder user and toolchain are baked in
       image: ghcr.io/${{ github.repository }}/builder:latest
@@ -167,7 +167,7 @@ jobs:
     # needs.build.result is 'failure' if ANY matrix leg failed; run anyway so
     # partial successes still publish. publish.py fails if nothing was built.
     if: always() && needs.check.outputs.has_pending == 'true' && needs.build.result != 'cancelled' && needs.build.result != 'skipped'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     # repo-add must come from the same pacman generation that built the
     # packages; Ubuntu's build rejects them as "not a package file".
     container: docker://ghcr.io/${{ github.repository }}/repo:latest
@@ -202,7 +202,7 @@ jobs:
     # the packages left over depend on what publish just uploaded, so a
     # fresh run recomputes them as wave 0 and builds them
     if: needs.check.outputs.more_waves == 'true' && needs.publish.result == 'success'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     # the built-in token can be granted workflow dispatch here; the PAT
     # carries no Actions scope
     steps:
