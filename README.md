@@ -94,6 +94,7 @@ upload.
 | `sync-package-list` | cron | opens a PR adding repos that carry the topic but are missing from `packages.yml` |
 | `check-upstream-dupes` | weekly, on `packages.yml` | keeps an issue listing packages Arch now ships |
 | `check-repo` | daily, after each publish | verifies a published branch actually resolves |
+| `report-failures` | hourly | keeps an issue listing workflows whose latest run failed |
 | `rebuild-db` | manual | regenerates a branch's databases from the packages on R2 |
 | `sync-edition-topics` | cron | tags each repo `edition-<name>` for every edition whose settings package depends on it |
 | `build-images` | on `images/`, weekly | publishes the prebuilt toolchain images the other jobs run in |
@@ -155,6 +156,11 @@ is present at the recorded size, every published package has an entry,
 `.db` and `.files` agree, and packages and databases are signed. It runs
 after each publish for the branch just written, and daily across all of
 them, keeping findings in a `repo-inconsistent` issue.
+
+Breakage is reported rather than left in the logs: `report-failures`
+keeps a `ci-failing` issue listing every workflow whose most recent run on
+`main` did not succeed. A workflow is judged by its latest run only, so a
+row clears when it next passes and the issue closes when all of them do.
 
 `rebuild-db` is the repair. Every other database write is incremental,
 which is how a database comes to describe something other than the bucket;
