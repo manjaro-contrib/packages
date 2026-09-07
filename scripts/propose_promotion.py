@@ -114,11 +114,29 @@ def main() -> int:
     proposed = source_versions(s3, os.environ["R2_BUCKET"], source, args.arch)
     current = load(args.branch)
 
+    head = f"promote/{args.branch}"
+    status, open_prs = api(
+        "GET",
+        f"/repos/{args.repo}/pulls?head={args.repo.split('/')[0]}:{head}&state=open",
+        token,
+    )
+    open_pr = open_prs[0] if status == 200 and open_prs else None
+
     if proposed == current:
         log(f"{args.branch} manifest already matches {source}")
+        # a proposal from an earlier run describes a difference that no
+        # longer exists. Left open it is indistinguishable from a live one,
+        # and merging it would apply a stale manifest.
+        if open_pr:
+            api(
+                "PATCH",
+                f"/repos/{args.repo}/pulls/{open_pr['number']}",
+                token,
+                {"state": "closed"},
+            )
+            log(f"{args.branch}: closed stale #{open_pr['number']}")
         return 0
 
-    head = f"promote/{args.branch}"
     # the branch is rebuilt from base each run, so the proposal always
     # reflects the source branch as it is now
     reset_branch(args.repo, head, args.base, token)
@@ -131,12 +149,11 @@ def main() -> int:
         token,
     )
 
-    status, prs = api("GET", f"/repos/{args.repo}/pulls?head={args.repo.split('/')[0]}:{head}&state=open", token)
-    if status == 200 and prs:
-        log(f"{args.branch}: refreshed #{prs[0]['number']}")
+    if open_pr:
+        log(f"{args.branch}: refreshed #{open_pr['number']}")
         api(
             "PATCH",
-            f"/repos/{args.repo}/pulls/{prs[0]['number']}",
+            f"/repos/{args.repo}/pulls/{open_pr['number']}",
             token,
             {
                 "title": summarise(current, proposed, args.branch),
