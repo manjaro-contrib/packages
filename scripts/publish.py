@@ -14,7 +14,9 @@ import subprocess
 import sys
 
 from botocore.exceptions import ClientError
-from repo_common import DB_SUFFIXES, s3_client
+from catalog import load as load_catalog
+from catalog import repo_of
+from repo_common import DB_SUFFIXES, prefix_for, s3_client
 from repo_remove import artifacts_for, pkgname_of
 from repo_state import write_state
 
@@ -56,56 +58,73 @@ def main() -> int:
 
     bucket = os.environ["R2_BUCKET"]
     s3 = s3_client()
-    prefix = f"{args.branch}/{args.arch}/"
-    db_file = os.path.join(args.pkg_dir, f"{args.db_name}.db.tar.gz")
 
-    # both databases must be fetched: repo-add updates whichever files it
-    # finds and creates the rest from scratch, so publishing with only
-    # .db present rebuilt .files from the current build alone, dropping
-    # every other package's file list
-    for suffix in (".db.tar.gz", ".files.tar.gz"):
-        local = os.path.join(args.pkg_dir, f"{args.db_name}{suffix}")
-        try:
-            s3.download_file(bucket, prefix + f"{args.db_name}{suffix}", local)
-            log(f"downloaded existing {args.db_name}{suffix}")
-        except ClientError as e:
-            if e.response["Error"]["Code"] not in ("NoSuchKey", "404"):
-                raise
-            log(f"no {args.db_name}{suffix} yet, repo-add will create one")
-
-    # --include-sigs records each package's signature in the database, as
-    # every Arch and Manjaro repository does; tooling that reads a database
-    # expects the field, and pacman -Si can then report a package's signer
-    # without fetching it. --sign is unrelated: it signs the database
-    # itself, without which the package list is forgeable.
-    repo_add = ["repo-add", "--include-sigs", db_file, *packages]
-    key = os.environ.get("GPG_KEYID")
-    if key:
-        repo_add[1:1] = ["--sign", "--key", key]
-    subprocess.run(repo_add, check=True)
-
+    # a build batch can span repositories, and repo-add writes one database
+    # at a time, so group first and publish each repository separately
+    catalog = load_catalog()
+    grouped: dict[str, list[str]] = {}
     for pkg in packages:
-        s3.upload_file(pkg, bucket, prefix + os.path.basename(pkg))
-        log(f"uploaded {os.path.basename(pkg)}")
-        sig = pkg + ".sig"
-        if os.path.exists(sig):
-            s3.upload_file(sig, bucket, prefix + os.path.basename(sig))
+        name = pkgname_of(os.path.basename(pkg))
+        grouped.setdefault(repo_of(catalog.get(name, {})), []).append(pkg)
 
-    prune_superseded(s3, bucket, prefix, [os.path.basename(p) for p in packages])
+    for repo in sorted(grouped):
+        members = grouped[repo]
+        prefix = prefix_for(args.branch, args.arch, repo)
+        db_file = os.path.join(args.pkg_dir, f"{args.db_name}.db.tar.gz")
 
-    for suffix in DB_SUFFIXES:
-        for name in (f"{args.db_name}{suffix}", f"{args.db_name}{suffix}.sig"):
-            local = os.path.join(args.pkg_dir, name)
-            # repo-add writes .db/.files as symlinks; upload the real bytes
-            real = os.path.realpath(local)
-            if not os.path.exists(real):
-                continue
-            s3.upload_file(real, bucket, prefix + name)
-            log(f"uploaded {name}")
+        # a previous repository in this loop leaves its database behind, and
+        # repo-add would extend it rather than start the next one clean
+        for stale in glob.glob(os.path.join(args.pkg_dir, f"{args.db_name}.*")):
+            os.remove(stale)
+
+        # both databases must be fetched: repo-add updates whichever files it
+        # finds and creates the rest from scratch, so publishing with only
+        # .db present rebuilt .files from the current build alone, dropping
+        # every other package's file list
+        for suffix in (".db.tar.gz", ".files.tar.gz"):
+            local = os.path.join(args.pkg_dir, f"{args.db_name}{suffix}")
+            try:
+                s3.download_file(bucket, prefix + f"{args.db_name}{suffix}", local)
+                log(f"{repo}: downloaded existing {args.db_name}{suffix}")
+            except ClientError as e:
+                if e.response["Error"]["Code"] not in ("NoSuchKey", "404"):
+                    raise
+                log(f"{repo}: no {args.db_name}{suffix} yet, repo-add will create one")
+
+        # --include-sigs records each package's signature in the database, as
+        # every Arch and Manjaro repository does; tooling that reads a database
+        # expects the field, and pacman -Si can then report a package's signer
+        # without fetching it. --sign is unrelated: it signs the database
+        # itself, without which the package list is forgeable.
+        repo_add = ["repo-add", "--include-sigs", db_file, *members]
+        key = os.environ.get("GPG_KEYID")
+        if key:
+            repo_add[1:1] = ["--sign", "--key", key]
+        subprocess.run(repo_add, check=True)
+
+        for pkg in members:
+            s3.upload_file(pkg, bucket, prefix + os.path.basename(pkg))
+            log(f"{repo}: uploaded {os.path.basename(pkg)}")
+            sig = pkg + ".sig"
+            if os.path.exists(sig):
+                s3.upload_file(sig, bucket, prefix + os.path.basename(sig))
+
+        prune_superseded(s3, bucket, prefix, [os.path.basename(p) for p in members])
+
+        for suffix in DB_SUFFIXES:
+            for name in (f"{args.db_name}{suffix}", f"{args.db_name}{suffix}.sig"):
+                local = os.path.join(args.pkg_dir, name)
+                # repo-add writes .db/.files as symlinks; upload the real bytes
+                real = os.path.realpath(local)
+                if not os.path.exists(real):
+                    continue
+                s3.upload_file(real, bucket, prefix + name)
+                log(f"{repo}: uploaded {name}")
 
     write_state(s3, bucket, log)
 
-    log(f"published {len(packages)} package(s) to {args.branch}")
+    log(f"published {len(packages)} package(s) to {args.branch}: "
+        + ", ".join(f"{r}={len(g)}" for r, g in sorted(grouped.items())))
     return 0
 
 

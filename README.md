@@ -36,9 +36,22 @@ check working, not a broken mirror.
 Then add the repository to `/etc/pacman.conf`, above `[core]`:
 
 ```ini
-[manjaro-contrib]
+[extra]
 SigLevel = Required DatabaseRequired
-Server = https://packages.manjaro.download/unstable/$arch
+Server = https://packages.manjaro.download/unstable/extra/$arch
+```
+
+Every package is `extra` today, so that one section is enough. `core` and
+`multilib` follow the same shape, and exist so a client can mirror
+Manjaro's own `pacman.conf` structure and set `SigLevel` or `Usage` per
+repository:
+
+```ini
+[core]
+Server = https://packages.manjaro.download/unstable/core/$arch
+
+[multilib]
+Server = https://packages.manjaro.download/unstable/multilib/$arch
 ```
 
 Swap `unstable` for `testing` or `stable` to follow a slower branch.
@@ -199,7 +212,7 @@ exists rather than a migration.
 All 25 packages are `extra` today. `core` is the boot-critical set and
 `multilib` the 32-bit compatibility set; upstream is 96% `extra`.
 
-Objects are laid out as `<branch>/<arch>/`, alongside BoxIt-style `state`
+Objects are laid out as `<branch>/<repo>/<arch>/`, alongside BoxIt-style `state`
 files at the root and per branch, mirroring what Manjaro's own mirrors
 serve so mirror tooling can poll a hash instead of walking the tree.
 

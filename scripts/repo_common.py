@@ -6,6 +6,17 @@ import boto3
 
 DB_SUFFIXES = [".db", ".db.tar.gz", ".files", ".files.tar.gz"]
 
+def prefix_for(branch: str, arch: str, repo: str) -> str:
+    """Where a repository's objects live for a branch and architecture.
+
+    Membership is not recorded in package metadata - a `desc` entry has no
+    %REPO% field - so which database a package appears in *is* its
+    repository. That makes the prefix the only place membership exists in
+    the bucket, and every script has to agree on it.
+    """
+    return f"{branch}/{repo}/{arch}/"
+
+
 # Manjaro's lifecycle flows one way: a package must age through each branch.
 # Promoting backwards, or skipping a stage, would put binaries in stable
 # that no one ran in testing.

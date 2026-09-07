@@ -25,8 +25,9 @@ import sys
 import tempfile
 
 from botocore.exceptions import ClientError
+from catalog import REPOS
 from catalog import load as load_catalog
-from repo_common import DB_SUFFIXES, list_packages, s3_client
+from repo_common import DB_SUFFIXES, list_packages, prefix_for, s3_client
 from repo_remove import pkgname_of
 from repo_state import write_state
 
@@ -50,22 +51,23 @@ def withdraw(
     bucket: str,
     branch: str,
     arch: str,
+    repo: str,
     db_name: str,
     allowed: set[str],
     dry_run: bool,
 ) -> list[str]:
     """Delete unlisted packages from one branch. Returns the names removed."""
-    prefix = f"{branch}/{arch}/"
+    prefix = prefix_for(branch, arch, repo)
     found = orphans(s3, bucket, prefix, allowed)
     if not found:
-        log(f"{branch}/{arch}: nothing to withdraw")
+        log(f"{branch}/{repo}/{arch}: nothing to withdraw")
         return []
 
     for name, files in sorted(found.items()):
-        log(f"{branch}/{arch}: {name} is published but not listed"
+        log(f"{branch}/{repo}/{arch}: {name} is published but not listed"
             f" ({len(files)} artifact(s))")
     if dry_run:
-        log(f"{branch}/{arch}: dry run, nothing deleted")
+        log(f"{branch}/{repo}/{arch}: dry run, nothing deleted")
         return sorted(found)
 
     with tempfile.TemporaryDirectory() as workdir:
@@ -80,7 +82,7 @@ def withdraw(
                 if e.response["Error"]["Code"] not in ("NoSuchKey", "404"):
                     raise
         if not os.path.exists(db_file):
-            log(f"{branch}/{arch}: no database, skipping")
+            log(f"{branch}/{repo}/{arch}: no database, skipping")
             return []
 
         repo_remove = ["repo-remove", db_file, *sorted(found)]
@@ -98,7 +100,7 @@ def withdraw(
                     except ClientError as e:
                         if e.response["Error"]["Code"] not in ("NoSuchKey", "404"):
                             raise
-            log(f"{branch}/{arch}: withdrew {name}")
+            log(f"{branch}/{repo}/{arch}: withdrew {name}")
 
         for suffix in DB_SUFFIXES:
             for fname in (f"{db_name}{suffix}", f"{db_name}{suffix}.sig"):
@@ -136,9 +138,11 @@ def main() -> int:
 
     removed = []
     for arch in [a.strip() for a in args.arches.split(",") if a.strip()]:
-        removed += withdraw(
-            s3, bucket, args.branch, arch, args.db_name, allowed, args.dry_run
-        )
+        for repo in REPOS:
+            removed += withdraw(
+                s3, bucket, args.branch, arch, repo, args.db_name, allowed,
+                args.dry_run,
+            )
 
     if removed and not args.dry_run:
         write_state(s3, bucket, log)
