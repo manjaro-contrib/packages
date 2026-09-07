@@ -6,9 +6,9 @@ flat prefix per branch. This copies each object to the prefix its
 repository now implies, server-side, and only deletes the old one once the
 copy is verified present.
 
-The old prefix is a public URL: every existing pacman.conf points at it, so
-this deliberately leaves it in place. Deleting it is a separate decision,
-taken once clients have moved.
+--delete-old removes the flat prefix once the copies are verified,
+including the database it carried: left behind, a stale manjaro-contrib.db
+would still resolve and advertise packages no longer beside it.
 """
 
 import argparse
@@ -82,6 +82,7 @@ def main() -> int:
     catalog = load_catalog(args.config)
 
     total = 0
+    stale = 0
     for branch in [b.strip() for b in args.branches.split(",") if b.strip()]:
         moves = plan_moves(s3, bucket, branch, args.arch, catalog)
         if not moves:
@@ -112,11 +113,34 @@ def main() -> int:
             total += 1
         log(f"{branch}: moved {len(moves)} object(s)")
 
+    # the flat prefix keeps its own database, which the plan never touches:
+    # left behind it would still resolve, advertising packages that are no
+    # longer beside it
+    if args.delete_old:
+        for branch in [b.strip() for b in args.branches.split(",") if b.strip()]:
+            src = old_prefix(branch, args.arch)
+            for page in s3.get_paginator("list_objects_v2").paginate(
+                Bucket=bucket, Prefix=src
+            ):
+                for obj in page.get("Contents", []):
+                    name = obj["Key"].removeprefix(src)
+                    if "/" in name or pkgname_of(name):
+                        continue
+                    if args.dry_run:
+                        log(f"  would drop stale {obj['Key']}")
+                    else:
+                        s3.delete_object(Bucket=bucket, Key=obj["Key"])
+                        log(f"{branch}: dropped stale {name}")
+                    stale += 1
+
     if args.dry_run:
         log("dry run, nothing written")
         return 0
 
-    log(f"migrated {total} object(s); run rebuild-db to write the new databases")
+    log(
+        f"migrated {total} object(s), dropped {stale} stale database file(s);"
+        " run rebuild-db to write the new databases"
+    )
     return 0
 
 
