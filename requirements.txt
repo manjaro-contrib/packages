@@ -1,0 +1,9 @@
+# The only third-party packages the scripts import. Pinned so a run today
+# and a run next month install the same thing - an unpinned dependency
+# turns an upstream release into a failing scheduled job with no commit to
+# blame it on.
+#
+# Jobs running inside images/Containerfile take these from pacman instead,
+# since they need the system pacman's own generation of the tooling.
+boto3==1.43.89
+PyYAML==6.0.3

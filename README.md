@@ -216,6 +216,21 @@ are signed by GitHub, so `required_signatures` can be enforced without any
 signing key in CI, and the App's permissions cover every repository in the
 organization without a long-lived personal token.
 
+Tool and dependency versions live in [`mise.toml`](mise.toml) and
+[`requirements.txt`](requirements.txt), so a workstation and a runner
+install the same thing:
+
+```sh
+mise install        # python, uv and ruff at the pinned versions
+mise run install    # boto3 and PyYAML via uv
+mise run lint       # ruff
+```
+
+The jobs that run inside `images/Containerfile` take their dependencies
+from pacman instead: `repo-add` and `makepkg` must come from the same
+pacman generation that built the packages, so those images pin
+`python-boto3` and `python-yaml` rather than installing them per run.
+
 The scripts run locally against the same environment variables, which is
 the fastest way to check a change before pushing it:
 

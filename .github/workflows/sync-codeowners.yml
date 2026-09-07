@@ -28,10 +28,15 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: install tooling
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          version: 2026.9.1
+      - name: install dependencies
+        run: mise run install
       - name: sync CODEOWNERS into the package repos
         env:
           # writing into other repositories needs the cross-repo token
           GITHUB_TOKEN: ${{ steps.app.outputs.token }}
         run: |
-          pip install pyyaml
           python3 scripts/sync_codeowners.py --org "${{ github.repository_owner }}"
