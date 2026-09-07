@@ -26,7 +26,7 @@ import tarfile
 from botocore.exceptions import ClientError
 from catalog import REPOS
 from gh_api import keep_issue
-from repo_common import db_name_for, prefix_for, s3_client
+from repo_common import ARCHES, db_name_for, prefix_for, s3_client
 from repo_state import BRANCHES
 
 # a database entry records its own filename and size; both must match
@@ -164,7 +164,11 @@ def main() -> int:
         action="append",
         help="branch to check; repeatable, defaults to all of them",
     )
-    parser.add_argument("--arch", default="x86_64")
+    parser.add_argument(
+        "--arch",
+        action="append",
+        help="architecture to check; repeatable, defaults to all of them",
+    )
     parser.add_argument(
         "--issue",
         metavar="OWNER/REPO",
@@ -177,10 +181,11 @@ def main() -> int:
 
     problems = []
     for branch in args.branch or BRANCHES:
-        for repo in REPOS:
-            found = check_branch(s3, bucket, branch, args.arch, repo)
-            log(f"{branch}/{repo}: {len(found) or 'no'} problem(s)")
-            problems += found
+        for arch in args.arch or ARCHES:
+            for repo in REPOS:
+                found = check_branch(s3, bucket, branch, arch, repo)
+                log(f"{branch}/{repo}/{arch}: {len(found) or 'no'} problem(s)")
+                problems += found
 
     for problem in problems:
         log(f"  {problem}")

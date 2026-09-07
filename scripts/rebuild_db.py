@@ -24,7 +24,14 @@ import tempfile
 
 from botocore.exceptions import ClientError
 from catalog import REPOS
-from repo_common import DB_SUFFIXES, db_name_for, list_packages, prefix_for, s3_client
+from repo_common import (
+    ARCHES,
+    DB_SUFFIXES,
+    db_name_for,
+    list_packages,
+    prefix_for,
+    s3_client,
+)
 from repo_state import write_state
 
 
@@ -40,14 +47,17 @@ def entry_count(path: str) -> int:
 
 def rebuild(
     s3, bucket: str, branch: str, arch: str, repo: str, dry_run: bool
-) -> int:
-    """Rebuild one repository's databases. Returns the package count."""
+) -> bool:
+    """Rebuild one repository's databases. Returns whether it uploaded."""
     prefix = prefix_for(branch, arch, repo)
     db_name = db_name_for(repo)
     names = list_packages(s3, bucket, prefix)
+    # an empty repository still needs a database: pacman fails the whole
+    # -Sy when any configured repository 404s, so a declared repository
+    # with no packages has to publish an empty one. repo-add writes a
+    # valid 45-byte archive for that case.
     if not names:
-        log(f"{branch}/{repo}/{arch}: no packages, nothing to rebuild")
-        return 0
+        log(f"{branch}/{repo}/{arch}: no packages, writing an empty database")
 
     with tempfile.TemporaryDirectory() as workdir:
         paths = []
@@ -81,7 +91,7 @@ def rebuild(
 
         if dry_run:
             log(f"{branch}/{repo}/{arch}: dry run, nothing uploaded")
-            return len(names)
+            return False
 
         for suffix in DB_SUFFIXES:
             for fname in (f"{db_name}{suffix}", f"{db_name}{suffix}.sig"):
@@ -92,7 +102,7 @@ def rebuild(
                 s3.upload_file(real, bucket, prefix + fname)
                 log(f"  uploaded {fname}")
 
-    return len(names)
+    return True
 
 
 def main() -> int:
@@ -102,7 +112,7 @@ def main() -> int:
         required=True,
         help="comma-separated branches to rebuild",
     )
-    parser.add_argument("--arches", default="x86_64")
+    parser.add_argument("--arches", default=",".join(ARCHES))
     parser.add_argument(
         "--dry-run",
         action="store_true",

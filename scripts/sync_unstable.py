@@ -27,7 +27,14 @@ import tempfile
 from botocore.exceptions import ClientError
 from catalog import REPOS
 from catalog import load as load_catalog
-from repo_common import DB_SUFFIXES, db_name_for, list_packages, prefix_for, s3_client
+from repo_common import (
+    ARCHES,
+    DB_SUFFIXES,
+    db_name_for,
+    list_packages,
+    prefix_for,
+    s3_client,
+)
 from repo_remove import pkgname_of
 from repo_state import write_state
 
@@ -117,7 +124,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="packages.yml")
     parser.add_argument("--branch", default="unstable")
-    parser.add_argument("--arches", default="x86_64")
+    parser.add_argument("--arches", default=",".join(ARCHES))
     parser.add_argument(
         "--dry-run",
         action="store_true",

@@ -14,12 +14,13 @@ on:
 env:
   REPO_URL: ${{ vars.REPO_URL }}
   BRANCH: unstable
-  ARCH: x86_64
 
 jobs:
   check:
     runs-on: ubuntu-latest
     outputs:
+      # a version built for one architecture can be missing for the other,
+      # so each gets its own list
       pending: ${{ steps.check.outputs.pending }}
       has_pending: ${{ steps.check.outputs.has_pending }}
       more_waves: ${{ steps.check.outputs.more_waves }}
@@ -38,22 +39,31 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app.outputs.token }}
           ONLY_REPO: ${{ github.event.client_payload.repo || inputs.repo }}
         run: |
-          args=(--org "${{ github.repository_owner }}" --repo-url "$REPO_URL" --branch "$BRANCH" --arch "$ARCH")
-          [ -n "$ONLY_REPO" ] && args+=(--only-repo "$ONLY_REPO")
-          all=$(python3 scripts/check_updates.py "${args[@]}")
-          # build only the first wave: later waves depend on packages this
-          # run publishes, so they cannot resolve until it finishes
-          pending=$(jq -c '[.[] | select(.wave == 0)]' <<<"$all")
+          pending='[]'
+          more=false
+          for arch in x86_64 aarch64; do
+            args=(--org "${{ github.repository_owner }}" --repo-url "$REPO_URL" \
+                  --branch "$BRANCH" --arch "$arch")
+            [ -n "$ONLY_REPO" ] && args+=(--only-repo "$ONLY_REPO")
+            all=$(python3 scripts/check_updates.py "${args[@]}")
+            # build only the first wave: later waves depend on packages this
+            # run publishes, so they cannot resolve until it finishes
+            wave0=$(jq -c --arg a "$arch" '[.[] | select(.wave == 0) | .arch = $a]' <<<"$all")
+            pending=$(jq -c -s 'add' <<<"$pending$wave0")
+            [ "$(jq 'any(.[]; .wave > 0)' <<<"$all")" = true ] && more=true
+          done
           {
             echo "pending=$pending"
             echo "has_pending=$(jq 'length > 0' <<<"$pending")"
-            echo "more_waves=$(jq 'any(.[]; .wave > 0)' <<<"$all")"
+            echo "more_waves=$more"
           } >> "$GITHUB_OUTPUT"
 
   build:
     needs: check
     if: needs.check.outputs.has_pending == 'true'
-    runs-on: ubuntu-latest
+    # native, not emulated: makepkg under qemu is slow enough to change
+    # what a build costs
+    runs-on: ${{ matrix.package.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     container:
       # the builder user and toolchain are baked in
       image: ghcr.io/${{ github.repository }}/builder:latest
@@ -74,9 +84,13 @@ jobs:
           pacman-key --init
           pacman-key --add /tmp/contrib.asc
           pacman-key --lsign-key "$GPG_KEYID"
-          # shellcheck disable=SC2016  # pacman itself expands $arch
-          printf '\n[manjaro-contrib]\nSigLevel = Required DatabaseRequired\nServer = %s/%s/$arch\n' \
-            "$REPO_URL" "$BRANCH" >> /etc/pacman.conf
+          # the section name is the database name, so each repository needs
+          # its own; $repo and $arch are expanded by pacman, not the shell
+          # shellcheck disable=SC2016
+          for repo in core extra multilib; do
+            printf '\n[%s]\nSigLevel = Required DatabaseRequired\nServer = %s/%s/$repo/$arch\n' \
+              "$repo" "$REPO_URL" "$BRANCH" >> /etc/pacman.conf
+          done
           pacman -Sy --noconfirm
       - name: mint an app token
         # app-authored commits and releases are signed by github
@@ -155,7 +169,7 @@ jobs:
       - name: upload package artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: pkg-${{ matrix.package.pkgbase }}
+          name: pkg-${{ matrix.package.arch }}-${{ matrix.package.pkgbase }}
           path: |
             pkg/*.pkg.tar.zst
             pkg/*.pkg.tar.zst.sig
@@ -164,6 +178,11 @@ jobs:
 
   publish:
     needs: [check, build]
+    strategy:
+      # one at a time: both legs rewrite the shared state file
+      max-parallel: 1
+      matrix:
+        arch: [x86_64, aarch64]
     # needs.build.result is 'failure' if ANY matrix leg failed; run anyway so
     # partial successes still publish. publish.py fails if nothing was built.
     if: always() && needs.check.outputs.has_pending == 'true' && needs.build.result != 'cancelled' && needs.build.result != 'skipped'
@@ -172,6 +191,10 @@ jobs:
     # packages; Ubuntu's build rejects them as "not a package file".
     container: docker://ghcr.io/${{ github.repository }}/repo:latest
     concurrency:
+      # one shared group, not one per arch: the state file covers every
+      # branch and arch, so two publishes must never overlap. With
+      # cancel-in-progress false the second leg queues rather than dying,
+      # and max-parallel keeps the ordering inside this run.
       group: repo-publish
       cancel-in-progress: false
     steps:
@@ -179,15 +202,25 @@ jobs:
       - name: download built packages
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: pkg-*
+          pattern: pkg-${{ matrix.arch }}-*
           path: packages
           merge-multiple: true
+      - name: is there anything for this architecture
+        # the other architecture may have been the only one with work, and
+        # publish.py treats an empty directory as a failure
+        id: have
+        run: |
+          count=$(find packages -name '*.pkg.tar.zst' 2>/dev/null | wc -l)
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "## ${{ matrix.arch }}: $count package(s) to publish"
       - name: import signing key
+        if: steps.have.outputs.count != '0'
         env:
           GPG_SECRET_BASE64: ${{ secrets.GPG_SECRET_BASE64 }}
           GPG_KEYID: ${{ vars.GPG_KEYID }}
         run: scripts/import_key.sh
       - name: publish to R2
+        if: steps.have.outputs.count != '0'
         env:
           GPG_KEYID: ${{ vars.GPG_KEYID }}
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
@@ -195,7 +228,8 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
-          python3 scripts/publish.py --pkg-dir packages --branch "$BRANCH" --arch "$ARCH"
+          python3 scripts/publish.py --pkg-dir packages --branch "$BRANCH" \
+            --arch "${{ matrix.arch }}"
       - name: verify the branch resolves
         # the state hash changes for a partial upload exactly as it does
         # for a good one, so check the invariants a client depends on
@@ -205,7 +239,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
-          python3 scripts/check_repo.py --branch "$BRANCH" --arch "$ARCH"
+          python3 scripts/check_repo.py --branch "$BRANCH" --arch "${{ matrix.arch }}"
 
   next-wave:
     needs: [check, publish]
