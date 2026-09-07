@@ -127,3 +127,31 @@ test('the canonical listing is unchanged', async () => {
   assert.match(html, /href="\/unstable\/extra\/x86_64\/"/);
   assert.doesNotMatch(html, /arm-unstable/);
 });
+
+test('the favicon is served, and declared in the listing', async () => {
+  const res = await worker.fetch(get('favicon.svg'), env(KEYS));
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-type'), /image\/svg\+xml/);
+  const body = await res.text();
+  assert.match(body, /^<svg /);
+  assert.doesNotMatch(body, /<!--/, 'comments are stripped from the inlined copy');
+
+  // a browser that is not told will only guess /favicon.ico
+  const html = await (await worker.fetch(get('unstable/extra/'), env(KEYS))).text();
+  assert.match(html, /rel="icon" href="\/favicon\.svg"/);
+});
+
+test('an .ico request gets the same svg', async () => {
+  const res = await worker.fetch(get('favicon.ico'), env(KEYS));
+  assert.equal(res.status, 200);
+  assert.match(await res.text(), /^<svg /);
+});
+
+test('the favicon route does not shadow a package named the same', async () => {
+  // packages live under <branch>/<repo>/<arch>/, so the only favicon.svg
+  // the route can claim is the one at the root
+  const e = env(['unstable/extra/x86_64/favicon.svg']);
+  const res = await worker.fetch(get('unstable/extra/x86_64/favicon.svg'), e);
+  assert.equal(res.status, 200);
+  assert.equal(await res.text(), 'bytes', 'the bucket object wins at a nested path');
+});
