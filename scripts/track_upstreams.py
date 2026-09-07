@@ -8,7 +8,6 @@ Merge conflicts abort that package — a human has to reconcile manually.
 """
 
 import argparse
-import json
 import os
 import subprocess
 import sys
@@ -32,22 +31,13 @@ def run(cmd: list[str], cwd: str, check: bool = True) -> subprocess.CompletedPro
     return subprocess.run(cmd, cwd=cwd, check=check, capture_output=True, text=True)
 
 
-def github_api(method: str, path: str, token: str, body: dict | None = None) -> dict | None:
-    req = urllib.request.Request(
-        f"https://api.github.com{path}",
-        method=method,
-        data=json.dumps(body).encode() if body is not None else None,
-    )
-    req.add_header("Accept", "application/vnd.github+json")
-    req.add_header("Authorization", f"Bearer {token}")
-    with urllib.request.urlopen(req) as resp:
-        return json.load(resp) if resp.status != 204 else None
-
 
 def pr_exists(org: str, name: str, token: str) -> bool:
-    prs = github_api(
+    status, prs = api(
         "GET", f"/repos/{org}/{name}/pulls?head={org}:{UPDATE_BRANCH}&state=open", token
     )
+    if status != 200:
+        raise RuntimeError(f"pull request lookup failed ({status}): {prs}")
     return bool(prs)
 
 
@@ -126,7 +116,7 @@ def sync_package(org: str, name: str, cfg: dict, token: str) -> bool:
         log(f"{name}: server-side merge failed ({status}): {payload}")
         return False
 
-    pr = github_api(
+    status, pr = api(
         "POST",
         f"/repos/{org}/{name}/pulls",
         token,
@@ -137,19 +127,21 @@ def sync_package(org: str, name: str, cfg: dict, token: str) -> bool:
             "body": f"Automated merge of {ahead} new upstream commit(s) from {upstream}.",
         },
     )
+    if status not in (200, 201):
+        log(f"{name}: opening the pull request failed ({status}): {pr}")
+        return False
     log(f"{name}: opened PR #{pr['number']}")
 
     if maintainers:
-        try:
-            github_api(
-                "POST",
-                f"/repos/{org}/{name}/pulls/{pr['number']}/requested_reviewers",
-                token,
-                {"reviewers": maintainers},
-            )
-        except urllib.error.HTTPError as e:
-            # 422: reviewer is the PR author or lacks repo access — PR is still valid
-            log(f"{name}: could not request reviewers ({e.code})")
+        status, detail = api(
+            "POST",
+            f"/repos/{org}/{name}/pulls/{pr['number']}/requested_reviewers",
+            token,
+            {"reviewers": maintainers},
+        )
+        # 422: reviewer is the PR author or lacks repo access - PR is still valid
+        if status not in (200, 201):
+            log(f"{name}: could not request reviewers ({status})")
     return True
 
 

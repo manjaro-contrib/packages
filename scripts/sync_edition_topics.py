@@ -16,11 +16,12 @@ import argparse
 import base64
 import os
 import re
-import subprocess
 import sys
 import tempfile
 
 from gh_api import api
+from pkgbuild import fields as parse_fields
+from pkgbuild import strip_constraint
 
 # github topics allow only lowercase alphanumerics and hyphens,
 # so the namespace separator is a hyphen rather than a colon
@@ -49,35 +50,16 @@ def parse(repo: str, branch: str, token: str) -> dict | None:
         return None
     content = base64.b64decode(data["content"]).decode()
     with tempfile.TemporaryDirectory() as workdir:
-        path = os.path.join(workdir, "PKGBUILD")
-        with open(path, "w") as f:
-            f.write(content)
-        result = subprocess.run(
-            [os.path.join(SCRIPT_DIR, "parse_pkgbuild.sh"), path],
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
-        )
-    if result.returncode != 0:
+        fields, _ = parse_fields(content, workdir)
+    if fields is None:
         log(f"  {repo}: parse failed")
         return None
-    fields = dict(
-        line.split("=", 1) for line in result.stdout.splitlines() if "=" in line
-    )
     return {
         "pkgbase": fields["pkgbase"],
         "names": fields["pkgname"].split(),
-        "provides": [strip(p) for p in fields.get("provides", "").split()],
-        "depends": [strip(d) for d in fields.get("depends", "").split()],
+        "provides": [strip_constraint(p) for p in fields.get("provides", "").split()],
+        "depends": [strip_constraint(d) for d in fields.get("depends", "").split()],
     }
-
-
-def strip(dep: str) -> str:
-    for sep in (">=", "<=", ">", "<", "="):
-        if sep in dep:
-            return dep.split(sep, 1)[0]
-    return dep
 
 
 def resolve(packages: dict[str, dict]) -> dict[str, set[str]]:
