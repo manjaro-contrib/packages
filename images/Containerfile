@@ -4,9 +4,10 @@
 # to half its total runtime. Baking the packages in moves that cost to a
 # weekly image build.
 #
-# Both stages must stay on manjarolinux/base: repo-add and makepkg have to
-# come from the same pacman generation that produced the packages, or the
-# database rejects them as "not a package file".
+# repo-add and makepkg have to come from the same pacman generation that
+# produced the packages, or the database rejects them as "not a package
+# file". Both bases below ship pacman 7.1.0.r9.g54d9411-2, so that holds
+# across the per-architecture split.
 
 FROM manjarolinux/base:latest AS repo
 # publish, promote and remove: rewrite the database and talk to R2
@@ -17,8 +18,21 @@ RUN pacman -Syu --noconfirm --needed \
 # have to fix up permissions on every job
 RUN install -dm700 /root/.gnupg
 
-FROM manjarolinux/base:latest AS builder
-# makepkg refuses to run as root, so the unprivileged account is baked in
+# The builder base differs per architecture, and BUILDER_BASE selects it -
+# build-images.yml passes the one that matches the architecture it is
+# building on.
+#
+# Manjaro's ARM branches are years behind its x86 ones: arm-stable ships
+# gcc 12.1.0, glibc 2.35 and rust 1.76, against 16.2.1, 2.44 and 1.98.1 on
+# x86. Old enough that four packages failed on aarch64 alone while the
+# same versions built cleanly on x86_64 (#50) - two on a Cargo lockfile v4
+# that needs cargo 1.78, one on a libalpm generation mismatch in cgo, one
+# on gcc rejecting `!va_list`. Even arm-unstable only reaches rust 1.89.
+#
+# Arch Linux ARM tracks Arch closely - gcc 16.1.1, glibc 2.43, rust 1.98.1,
+# the same rust Manjaro x86 ships - so aarch64 builds there instead.
+ARG BUILDER_BASE=manjarolinux/base:latest
+FROM ${BUILDER_BASE} AS builder
 RUN pacman -Syu --noconfirm --needed \
       base-devel git sudo python gnupg curl && \
     pacman -Scc --noconfirm && \

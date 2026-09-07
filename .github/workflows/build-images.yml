@@ -36,6 +36,8 @@ jobs:
           context: images
           file: images/Containerfile
           target: ${{ matrix.target }}
+          build-args: |
+            BUILDER_BASE=${{ matrix.arch == 'aarch64' && 'menci/archlinuxarm:base-devel' || 'manjarolinux/base:latest' }}
           push: true
           # one tag per architecture; the manifest below joins them, so a
           # job can pull :latest and get its own architecture
