@@ -6,6 +6,10 @@ import boto3
 
 DB_SUFFIXES = [".db", ".db.tar.gz", ".files", ".files.tar.gz"]
 
+# every architecture published. "any" packages are not listed: they
+# live in each arch prefix rather than one of their own.
+ARCHES = ("x86_64", "aarch64")
+
 def db_name_for(repo: str) -> str:
     """The database filename stem for a repository.
 

@@ -14,7 +14,7 @@ import tempfile
 
 from botocore.exceptions import ClientError
 from catalog import REPOS
-from repo_common import DB_SUFFIXES, db_name_for, prefix_for, s3_client
+from repo_common import ARCHES, DB_SUFFIXES, db_name_for, prefix_for, s3_client
 from repo_state import write_state
 
 
@@ -69,7 +69,7 @@ def main() -> int:
         default="unstable,testing,stable",
         help="comma-separated branches to remove from",
     )
-    parser.add_argument("--arches", default="x86_64")
+    parser.add_argument("--arches", default=",".join(ARCHES))
     args = parser.parse_args()
 
     names = [n.strip() for n in args.packages.split(",") if n.strip()]

@@ -69,6 +69,10 @@ Server = https://packages.manjaro.download/unstable/$repo/$arch
 
 ### aarch64
 
+Every package is built for both `x86_64` and `aarch64`, natively on the
+runner for that architecture rather than under emulation. All 25 declare
+either `any` or `aarch64`, so nothing is architecture-gated today.
+
 Upstream serves arm as a separate tree - `arm-stable/core/aarch64/` - so a
 `pacman.conf` copied from a Manjaro ARM mirror expects that shape. We
 store the architecture below the repository instead, keeping a branch in

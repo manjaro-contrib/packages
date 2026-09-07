@@ -13,13 +13,17 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # native per architecture rather than qemu: a pacman transaction under
+    # emulation is slow enough to matter, and the base image already
+    # publishes both
+    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     permissions:
       contents: read
       packages: write
     strategy:
       matrix:
         target: [repo, builder]
+        arch: [x86_64, aarch64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -33,6 +37,30 @@ jobs:
           file: images/Containerfile
           target: ${{ matrix.target }}
           push: true
-          tags: ghcr.io/${{ github.repository }}/${{ matrix.target }}:latest
+          # one tag per architecture; the manifest below joins them, so a
+          # job can pull :latest and get its own architecture
+          tags: ghcr.io/${{ github.repository }}/${{ matrix.target }}:${{ matrix.arch }}
           # the base image moves under us, so never trust a cached layer
           no-cache: true
+
+  manifest:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    strategy:
+      matrix:
+        target: [repo, builder]
+    steps:
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: join the per-arch tags into one manifest
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}/${{ matrix.target }}
+        run: |
+          docker buildx imagetools create -t "$IMAGE:latest" \
+            "$IMAGE:x86_64" "$IMAGE:aarch64"
+          docker buildx imagetools inspect "$IMAGE:latest"
