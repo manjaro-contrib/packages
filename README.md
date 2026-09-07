@@ -36,10 +36,56 @@ check working, not a broken mirror.
 Then add the repository to `/etc/pacman.conf`, above `[core]`:
 
 ```ini
-[manjaro-contrib]
+[extra]
 SigLevel = Required DatabaseRequired
-Server = https://packages.manjaro.download/unstable/$arch
+Server = https://packages.manjaro.download/unstable/extra/$arch
 ```
+
+The layout matches an upstream Manjaro mirror, so a `pacman.conf` written
+against one works here with only the `Server` line changed: `$repo/$arch`
+resolves the same way, and each database is named after its repository -
+`extra.db`, not a single shared name, which is what pacman derives from
+the section name.
+
+Every package is `extra` today, so that one section is enough. `core` and
+`multilib` follow the same shape, and exist so a client can mirror
+Manjaro's own `pacman.conf` structure and set `SigLevel` or `Usage` per
+repository:
+
+```ini
+[core]
+Server = https://packages.manjaro.download/unstable/core/$arch
+
+[multilib]
+Server = https://packages.manjaro.download/unstable/multilib/$arch
+```
+
+`$repo/$arch` also resolves, as on an upstream mirror, so one line can
+serve every repository:
+
+```ini
+Server = https://packages.manjaro.download/unstable/$repo/$arch
+```
+
+### aarch64
+
+Upstream serves arm as a separate tree - `arm-stable/core/aarch64/` - so a
+`pacman.conf` copied from a Manjaro ARM mirror expects that shape. We
+store the architecture below the repository instead, keeping a branch in
+one place rather than splitting each in two:
+
+```
+unstable/extra/aarch64/
+```
+
+`arm-<branch>` is served as an alias of it, so both work:
+
+```ini
+Server = https://packages.manjaro.download/arm-unstable/$repo
+```
+
+Only `aarch64` is aliased. `arm-stable/core/x86_64` does not exist
+upstream either, so honouring it would invent a path no mirror serves.
 
 Swap `unstable` for `testing` or `stable` to follow a slower branch.
 `SigLevel = Required DatabaseRequired` verifies both the packages and the
@@ -199,7 +245,7 @@ exists rather than a migration.
 All 25 packages are `extra` today. `core` is the boot-critical set and
 `multilib` the 32-bit compatibility set; upstream is 96% `extra`.
 
-Objects are laid out as `<branch>/<arch>/`, alongside BoxIt-style `state`
+Objects are laid out as `<branch>/<repo>/<arch>/`, alongside BoxIt-style `state`
 files at the root and per branch, mirroring what Manjaro's own mirrors
 serve so mirror tooling can poll a hash instead of walking the tree.
 

@@ -24,8 +24,9 @@ import sys
 import tarfile
 
 from botocore.exceptions import ClientError
+from catalog import REPOS
 from gh_api import keep_issue
-from repo_common import s3_client
+from repo_common import db_name_for, prefix_for, s3_client
 from repo_state import BRANCHES
 
 # a database entry records its own filename and size; both must match
@@ -73,10 +74,11 @@ def objects(s3, bucket: str, prefix: str) -> dict[str, int]:
 
 
 def check_branch(
-    s3, bucket: str, branch: str, arch: str, db_name: str
+    s3, bucket: str, branch: str, arch: str, repo: str
 ) -> list[str]:
     """Every inconsistency found in one branch."""
-    prefix = f"{branch}/{arch}/"
+    prefix = prefix_for(branch, arch, repo)
+    db_name = db_name_for(repo)
     problems = []
 
     present = objects(s3, bucket, prefix)
@@ -163,7 +165,6 @@ def main() -> int:
         help="branch to check; repeatable, defaults to all of them",
     )
     parser.add_argument("--arch", default="x86_64")
-    parser.add_argument("--db-name", default="manjaro-contrib")
     parser.add_argument(
         "--issue",
         metavar="OWNER/REPO",
@@ -176,9 +177,10 @@ def main() -> int:
 
     problems = []
     for branch in args.branch or BRANCHES:
-        found = check_branch(s3, bucket, branch, args.arch, args.db_name)
-        log(f"{branch}: {len(found) or 'no'} problem(s)")
-        problems += found
+        for repo in REPOS:
+            found = check_branch(s3, bucket, branch, args.arch, repo)
+            log(f"{branch}/{repo}: {len(found) or 'no'} problem(s)")
+            problems += found
 
     for problem in problems:
         log(f"  {problem}")

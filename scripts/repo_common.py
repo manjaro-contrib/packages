@@ -6,6 +6,28 @@ import boto3
 
 DB_SUFFIXES = [".db", ".db.tar.gz", ".files", ".files.tar.gz"]
 
+def db_name_for(repo: str) -> str:
+    """The database filename stem for a repository.
+
+    Upstream names each database after its repository - core.db, extra.db -
+    and pacman derives the filename from the section name in pacman.conf,
+    so [extra] fetches extra.db and nothing else. A single name shared
+    across repositories would be unreadable by a stock client.
+    """
+    return repo
+
+
+def prefix_for(branch: str, arch: str, repo: str) -> str:
+    """Where a repository's objects live for a branch and architecture.
+
+    Membership is not recorded in package metadata - a `desc` entry has no
+    %REPO% field - so which database a package appears in *is* its
+    repository. That makes the prefix the only place membership exists in
+    the bucket, and every script has to agree on it.
+    """
+    return f"{branch}/{repo}/{arch}/"
+
+
 # Manjaro's lifecycle flows one way: a package must age through each branch.
 # Promoting backwards, or skipping a stage, would put binaries in stable
 # that no one ran in testing.

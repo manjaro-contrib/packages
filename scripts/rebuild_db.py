@@ -23,7 +23,8 @@ import tarfile
 import tempfile
 
 from botocore.exceptions import ClientError
-from repo_common import DB_SUFFIXES, list_packages, s3_client
+from catalog import REPOS
+from repo_common import DB_SUFFIXES, db_name_for, list_packages, prefix_for, s3_client
 from repo_state import write_state
 
 
@@ -38,13 +39,14 @@ def entry_count(path: str) -> int:
 
 
 def rebuild(
-    s3, bucket: str, branch: str, arch: str, db_name: str, dry_run: bool
+    s3, bucket: str, branch: str, arch: str, repo: str, dry_run: bool
 ) -> int:
-    """Rebuild one branch's databases. Returns the package count."""
-    prefix = f"{branch}/{arch}/"
+    """Rebuild one repository's databases. Returns the package count."""
+    prefix = prefix_for(branch, arch, repo)
+    db_name = db_name_for(repo)
     names = list_packages(s3, bucket, prefix)
     if not names:
-        log(f"{branch}/{arch}: no packages, nothing to rebuild")
+        log(f"{branch}/{repo}/{arch}: no packages, nothing to rebuild")
         return 0
 
     with tempfile.TemporaryDirectory() as workdir:
@@ -73,12 +75,12 @@ def rebuild(
 
         files_file = os.path.join(workdir, f"{db_name}.files.tar.gz")
         log(
-            f"{branch}/{arch}: rebuilt from {len(names)} package(s)"
+            f"{branch}/{repo}/{arch}: rebuilt from {len(names)} package(s)"
             f" -> db={entry_count(db_file)} files={entry_count(files_file)}"
         )
 
         if dry_run:
-            log(f"{branch}/{arch}: dry run, nothing uploaded")
+            log(f"{branch}/{repo}/{arch}: dry run, nothing uploaded")
             return len(names)
 
         for suffix in DB_SUFFIXES:
@@ -101,7 +103,6 @@ def main() -> int:
         help="comma-separated branches to rebuild",
     )
     parser.add_argument("--arches", default="x86_64")
-    parser.add_argument("--db-name", default="manjaro-contrib")
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -115,8 +116,9 @@ def main() -> int:
     wrote = False
     for branch in [b.strip() for b in args.branches.split(",") if b.strip()]:
         for arch in [a.strip() for a in args.arches.split(",") if a.strip()]:
-            if rebuild(s3, bucket, branch, arch, args.db_name, args.dry_run):
-                wrote = wrote or not args.dry_run
+            for repo in REPOS:
+                if rebuild(s3, bucket, branch, arch, repo, args.dry_run):
+                    wrote = wrote or not args.dry_run
 
     if wrote:
         # the databases changed, so every poller needs to know

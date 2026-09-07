@@ -66,10 +66,35 @@ ${rows || '<p>empty</p>'}
 `;
 }
 
+/**
+ * The stored key an upstream-style arm path refers to.
+ *
+ * Upstream serves arm as a separate tree - arm-stable/core/aarch64/ - so a
+ * pacman.conf copied from a Manjaro ARM mirror asks for that shape. We
+ * store one branch per name with the architecture below the repository,
+ * which keeps every branch in one place instead of splitting each in two.
+ * Rewriting the request is enough to serve both: arm-<branch> is an alias,
+ * not a second layout.
+ *
+ * Only aarch64 is aliased. arm-stable/core/x86_64 does not exist upstream
+ * either, so honouring it would invent a path no mirror serves.
+ */
+export function resolveArmAlias(key) {
+  const match = key.match(/^arm-(unstable|testing|stable)\/([^/]+)\/(.*)$/);
+  if (!match) return null;
+  const [, branch, repo, rest] = match;
+  // the arch segment is implied by the tree, so it is absent from the
+  // request; anything already naming an arch is not an upstream arm path
+  if (rest.startsWith('x86_64/')) return null;
+  const tail = rest.startsWith('aarch64/') ? rest.slice('aarch64/'.length) : rest;
+  return `${branch}/${repo}/aarch64/${tail}`;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    const key = decodeURIComponent(url.pathname.slice(1));
+    const requested = decodeURIComponent(url.pathname.slice(1));
+    const key = resolveArmAlias(requested) ?? requested;
 
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       return new Response('method not allowed', { status: 405 });
@@ -81,8 +106,14 @@ export default {
       if (!files.length && !listed.delimitedPrefixes.length) {
         return new Response('not found', { status: 404 });
       }
+      const shown = requested;
+      const rebase = (p) => shown + p.slice(key.length);
       return new Response(
-        renderListing(key, listed.delimitedPrefixes, files),
+        renderListing(
+          shown,
+          listed.delimitedPrefixes.map(rebase),
+          files.map((f) => ({ ...f, key: rebase(f.key) })),
+        ),
         { headers: { 'content-type': 'text/html; charset=utf-8' } },
       );
     }

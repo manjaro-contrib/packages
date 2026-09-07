@@ -17,10 +17,19 @@ import sys
 import tempfile
 
 from botocore.exceptions import ClientError
+from catalog import REPOS, repo_of
+from catalog import load as load_catalog
 from manifest import load
 from release_store import download as fetch_release
 from release_store import get_release
-from repo_common import DB_SUFFIXES, FLOW, list_packages, s3_client
+from repo_common import (
+    DB_SUFFIXES,
+    FLOW,
+    db_name_for,
+    list_packages,
+    prefix_for,
+    s3_client,
+)
 from repo_remove import pkgname_of
 from repo_state import write_state
 
@@ -119,7 +128,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--branch", required=True)
     parser.add_argument("--arch", default="x86_64")
-    parser.add_argument("--db-name", default="manjaro-contrib")
     parser.add_argument("--root", default=".")
     parser.add_argument(
         "--org",
@@ -140,94 +148,129 @@ def main() -> int:
     wanted = load(args.branch, args.root)
     bucket = os.environ["R2_BUCKET"]
     s3 = s3_client()
-    src_prefix = f"{source}/{args.arch}/"
-    dst_prefix = f"{args.branch}/{args.arch}/"
+    catalog = load_catalog()
 
-    p = plan(s3, bucket, src_prefix, dst_prefix, wanted)
+    # each repository is promoted on its own: a database covers one
+    # repository, so a package moving between branches only ever affects
+    # the database of the repository it belongs to
+    failed = False
+    changed = False
+    for repo in REPOS:
+        members = {
+            name: version
+            for name, version in wanted.items()
+            if repo_of(catalog.get(name, {})) == repo
+        }
+        db_name = db_name_for(repo)
+        src_prefix = prefix_for(source, args.arch, repo)
+        dst_prefix = prefix_for(args.branch, args.arch, repo)
 
-    # a version the source branch no longer carries may still exist as a
-    # release asset; restoring it is what makes reverting a manifest work
-    if p["missing"] and not args.dry_run:
-        token = os.environ.get("GITHUB_TOKEN")
-        if token:
-            if restore(s3, bucket, args.org, src_prefix, p["missing"], token):
-                p = plan(s3, bucket, src_prefix, dst_prefix, wanted)
-        else:
-            log("GITHUB_TOKEN unset, cannot restore from the release store")
+        p = plan(s3, bucket, src_prefix, dst_prefix, members)
 
-    for kind in ("add", "remove"):
-        for key in p[kind]:
-            log(f"{kind}: {key}")
-    if p["missing"]:
-        for name, version in p["missing"]:
-            log(f"ERROR: {name} {version} is not in {source} or its release store")
-        return 1
-    if not p["add"] and not p["remove"]:
-        log(f"{args.branch} already matches its manifest")
-        return 0
-    if args.dry_run:
-        log(f"would add {len(p['add'])} and remove {len(p['remove'])} object(s)")
-        return 0
+        # a version the source branch no longer carries may still exist as a
+        # release asset; restoring it is what makes reverting a manifest work
+        if p["missing"] and not args.dry_run:
+            token = os.environ.get("GITHUB_TOKEN")
+            if token:
+                if restore(s3, bucket, args.org, src_prefix, p["missing"], token):
+                    p = plan(s3, bucket, src_prefix, dst_prefix, members)
+            else:
+                log("GITHUB_TOKEN unset, cannot restore from the release store")
 
-    for name in p["add"]:
-        for suffix in ("", ".sig"):
-            try:
-                s3.copy_object(
-                    Bucket=bucket,
-                    CopySource={"Bucket": bucket, "Key": src_prefix + name + suffix},
-                    Key=dst_prefix + name + suffix,
+        for kind in ("add", "remove"):
+            for key in p[kind]:
+                log(f"{repo}: {kind}: {key}")
+        if p["missing"]:
+            for name, version in p["missing"]:
+                log(
+                    f"ERROR: {name} {version} is not in {source}/{repo}"
+                    " or its release store"
                 )
-            except ClientError as e:
-                if suffix == "" or e.response["Error"]["Code"] not in (
-                    "NoSuchKey",
-                    "404",
+            failed = True
+            continue
+        if not p["add"] and not p["remove"]:
+            log(f"{args.branch}/{repo} already matches its manifest")
+            continue
+        if args.dry_run:
+            log(
+                f"{repo}: would add {len(p['add'])}"
+                f" and remove {len(p['remove'])} object(s)"
+            )
+            continue
+
+        for name in p["add"]:
+            for suffix in ("", ".sig"):
+                try:
+                    s3.copy_object(
+                        Bucket=bucket,
+                        CopySource={
+                            "Bucket": bucket,
+                            "Key": src_prefix + name + suffix,
+                        },
+                        Key=dst_prefix + name + suffix,
+                    )
+                except ClientError as e:
+                    if suffix == "" or e.response["Error"]["Code"] not in (
+                        "NoSuchKey",
+                        "404",
+                    ):
+                        raise
+            log(f"{repo}: copied {name}")
+
+        for key in p["remove"]:
+            for suffix in ("", ".sig"):
+                try:
+                    s3.delete_object(Bucket=bucket, Key=dst_prefix + key + suffix)
+                except ClientError as e:
+                    if e.response["Error"]["Code"] not in ("NoSuchKey", "404"):
+                        raise
+            log(f"{repo}: withdrew {key}")
+
+        with tempfile.TemporaryDirectory() as workdir:
+            # the database is rebuilt from scratch: repo-add cannot express a
+            # removal and an addition in one consistent step
+            paths = []
+            for name in p["add"] + p["keep"]:
+                dest = os.path.join(workdir, name)
+                s3.download_file(bucket, dst_prefix + name, dest)
+                paths.append(dest)
+                # --include-sigs reads the signature from beside the package,
+                # so without fetching it the database would carry no %PGPSIG%
+                try:
+                    s3.download_file(
+                        bucket, dst_prefix + name + ".sig", dest + ".sig"
+                    )
+                except ClientError as e:
+                    if e.response["Error"]["Code"] not in ("NoSuchKey", "404"):
+                        raise
+
+            db_file = os.path.join(workdir, f"{db_name}.db.tar.gz")
+            if paths:
+                # --include-sigs records each package's signature in the
+                # database, matching every Arch and Manjaro repository;
+                # --sign signs the database itself
+                cmd = ["repo-add", "--include-sigs", db_file, *paths]
+                key = os.environ.get("GPG_KEYID")
+                if key:
+                    cmd[1:1] = ["--sign", "--key", key]
+                subprocess.run(cmd, check=True)
+
+            for suffix in DB_SUFFIXES:
+                for fname in (
+                    f"{db_name}{suffix}",
+                    f"{db_name}{suffix}.sig",
                 ):
-                    raise
-        log(f"copied {name}")
+                    real = os.path.realpath(os.path.join(workdir, fname))
+                    if not os.path.exists(real):
+                        continue
+                    s3.upload_file(real, bucket, dst_prefix + fname)
+                    log(f"{repo}: uploaded {fname}")
+        changed = True
 
-    for key in p["remove"]:
-        for suffix in ("", ".sig"):
-            try:
-                s3.delete_object(Bucket=bucket, Key=dst_prefix + key + suffix)
-            except ClientError as e:
-                if e.response["Error"]["Code"] not in ("NoSuchKey", "404"):
-                    raise
-        log(f"withdrew {key}")
-
-    with tempfile.TemporaryDirectory() as workdir:
-        # the database is rebuilt from scratch: repo-add cannot express a
-        # removal and an addition in one consistent step
-        paths = []
-        for name in p["add"] + p["keep"]:
-            dest = os.path.join(workdir, name)
-            s3.download_file(bucket, dst_prefix + name, dest)
-            paths.append(dest)
-            # --include-sigs reads the signature from beside the package,
-            # so without fetching it the database would carry no %PGPSIG%
-            try:
-                s3.download_file(bucket, dst_prefix + name + ".sig", dest + ".sig")
-            except ClientError as e:
-                if e.response["Error"]["Code"] not in ("NoSuchKey", "404"):
-                    raise
-
-        db_file = os.path.join(workdir, f"{args.db_name}.db.tar.gz")
-        if paths:
-            # --include-sigs records each package's signature in the
-            # database, matching every Arch and Manjaro repository;
-            # --sign signs the database itself
-            cmd = ["repo-add", "--include-sigs", db_file, *paths]
-            key = os.environ.get("GPG_KEYID")
-            if key:
-                cmd[1:1] = ["--sign", "--key", key]
-            subprocess.run(cmd, check=True)
-
-        for suffix in DB_SUFFIXES:
-            for fname in (f"{args.db_name}{suffix}", f"{args.db_name}{suffix}.sig"):
-                real = os.path.realpath(os.path.join(workdir, fname))
-                if not os.path.exists(real):
-                    continue
-                s3.upload_file(real, bucket, dst_prefix + fname)
-                log(f"uploaded {fname}")
+    if failed:
+        return 1
+    if not changed:
+        return 0
 
     write_state(s3, bucket, log)
     log(f"{args.branch} now carries {len(wanted)} package(s)")

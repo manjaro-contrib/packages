@@ -13,7 +13,8 @@ import sys
 import tempfile
 
 from botocore.exceptions import ClientError
-from repo_common import DB_SUFFIXES, s3_client
+from catalog import REPOS
+from repo_common import DB_SUFFIXES, db_name_for, prefix_for, s3_client
 from repo_state import write_state
 
 
@@ -69,7 +70,6 @@ def main() -> int:
         help="comma-separated branches to remove from",
     )
     parser.add_argument("--arches", default="x86_64")
-    parser.add_argument("--db-name", default="manjaro-contrib")
     args = parser.parse_args()
 
     names = [n.strip() for n in args.packages.split(",") if n.strip()]
@@ -83,51 +83,56 @@ def main() -> int:
 
     for branch in [b.strip() for b in args.branches.split(",") if b.strip()]:
         for arch in [a.strip() for a in args.arches.split(",") if a.strip()]:
-            prefix = f"{branch}/{arch}/"
-            with tempfile.TemporaryDirectory() as workdir:
-                db_file = os.path.join(workdir, f"{args.db_name}.db.tar.gz")
-                # .files must come along: repo-remove rewrites whichever
-                # databases are present and leaves the absent one stale
-                for suffix in (".db.tar.gz", ".files.tar.gz"):
-                    local = os.path.join(workdir, f"{args.db_name}{suffix}")
-                    try:
-                        s3.download_file(
-                            bucket, prefix + f"{args.db_name}{suffix}", local
-                        )
-                    except ClientError as e:
-                        if e.response["Error"]["Code"] not in (
-                            "NoSuchKey",
-                            "404",
+            # a removal names a package, not a repository, so every
+            # repository is searched: the caller pulling a broken package
+            # should not have to know which database carries it
+            for repo in REPOS:
+                prefix = prefix_for(branch, arch, repo)
+                db_name = db_name_for(repo)
+                with tempfile.TemporaryDirectory() as workdir:
+                    db_file = os.path.join(workdir, f"{db_name}.db.tar.gz")
+                    # .files must come along: repo-remove rewrites whichever
+                    # databases are present and leaves the absent one stale
+                    for suffix in (".db.tar.gz", ".files.tar.gz"):
+                        local = os.path.join(workdir, f"{db_name}{suffix}")
+                        try:
+                            s3.download_file(
+                                bucket, prefix + f"{db_name}{suffix}", local
+                            )
+                        except ClientError as e:
+                            if e.response["Error"]["Code"] not in (
+                                "NoSuchKey",
+                                "404",
+                            ):
+                                raise
+                    if not os.path.exists(db_file):
+                        log(f"{branch}/{arch}: no database, skipping")
+                        continue
+
+                    repo_remove = ["repo-remove", db_file, *names]
+                    key = os.environ.get("GPG_KEYID")
+                    if key:
+                        # the rewritten database needs a fresh signature
+                        repo_remove[1:1] = ["--sign", "--key", key]
+                    subprocess.run(repo_remove, check=False)
+
+                    for name in names:
+                        for key in artifacts_for(s3, bucket, prefix, name):
+                            s3.delete_object(Bucket=bucket, Key=key)
+                            log(f"{branch}/{arch}: deleted {key.removeprefix(prefix)}")
+                            removed_any = True
+
+                    for suffix in DB_SUFFIXES:
+                        for name in (
+                            f"{db_name}{suffix}",
+                            f"{db_name}{suffix}.sig",
                         ):
-                            raise
-                if not os.path.exists(db_file):
-                    log(f"{branch}/{arch}: no database, skipping")
-                    continue
-
-                repo_remove = ["repo-remove", db_file, *names]
-                key = os.environ.get("GPG_KEYID")
-                if key:
-                    # the rewritten database needs a fresh signature
-                    repo_remove[1:1] = ["--sign", "--key", key]
-                subprocess.run(repo_remove, check=False)
-
-                for name in names:
-                    for key in artifacts_for(s3, bucket, prefix, name):
-                        s3.delete_object(Bucket=bucket, Key=key)
-                        log(f"{branch}/{arch}: deleted {key.removeprefix(prefix)}")
-                        removed_any = True
-
-                for suffix in DB_SUFFIXES:
-                    for name in (
-                        f"{args.db_name}{suffix}",
-                        f"{args.db_name}{suffix}.sig",
-                    ):
-                        local = os.path.join(workdir, name)
-                        real = os.path.realpath(local)
-                        if not os.path.exists(real):
-                            continue
-                        s3.upload_file(real, bucket, prefix + name)
-                log(f"{branch}/{arch}: database updated")
+                            local = os.path.join(workdir, name)
+                            real = os.path.realpath(local)
+                            if not os.path.exists(real):
+                                continue
+                            s3.upload_file(real, bucket, prefix + name)
+                    log(f"{branch}/{repo}/{arch}: database updated")
 
     if not removed_any:
         log("no matching packages found in any branch")
