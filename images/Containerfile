@@ -36,7 +36,13 @@ RUN install -dm700 /root/.gnupg
 # Arch Linux ARM tracks Arch closely - gcc 16.1.1, glibc 2.43, rust 1.98.1,
 # the same rust Manjaro x86 ships - so aarch64 builds there instead.
 FROM ${BUILDER_BASE} AS builder
-RUN pacman -Syu --noconfirm --needed \
+# --disable-sandbox: Arch Linux ARM's pacman.conf sets DownloadUser = alpm,
+# and pacman then applies a Landlock ruleset that buildkit's sandbox
+# refuses - "restricting filesystem access failed ... Operation not
+# permitted", then "switching to sandbox user 'alpm' failed". Manjaro's
+# base sets no DownloadUser, which is why only the arm leg hit it. The
+# download sandbox buys nothing in a throwaway image build.
+RUN pacman -Syu --noconfirm --needed --disable-sandbox \
       base-devel git sudo python gnupg curl && \
     pacman -Scc --noconfirm && \
     (id -u builder >/dev/null 2>&1 || useradd -m builder) && \
