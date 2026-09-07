@@ -7,6 +7,11 @@
 # override: why we ship a package arch already ships. Without this,
 #   check-upstream-dupes reports it as redundant, since an overlay package
 #   that duplicates the distribution only decides which one pacman picks.
+# repo: which pacman repository the package is published into, defaulting
+#   to extra. Nothing in a package declares this - membership is simply
+#   which database it appears in - so it has to be stated here. core is
+#   the boot-critical set and multilib the 32-bit compatibility set;
+#   everything else belongs in extra, which upstream is 96% of.
 
 packages:
   # tracked against the AUR

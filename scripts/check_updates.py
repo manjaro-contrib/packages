@@ -22,7 +22,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-import yaml
+from catalog import load as load_catalog
 from release_store import get_release, has_assets
 
 TOPIC = "pkg"
@@ -214,8 +214,7 @@ def main() -> int:
     # The topic makes a repository visible; the config is what authorises it
     # to be built. Anyone able to add a topic could otherwise have arbitrary
     # code built and signed with the repository key.
-    with open(args.config) as f:
-        allowed = set(yaml.safe_load(f)["packages"] or {})
+    allowed = set(load_catalog(args.config))
     unlisted = [r["name"] for r in repos if r["name"] not in allowed]
     for name in sorted(unlisted):
         log(f"{name}: tagged but not in {args.config}, skipping")

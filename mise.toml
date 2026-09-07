@@ -1,0 +1,31 @@
+# Tool and dependency versions, so a workstation and a runner agree.
+#
+# The scripts here are standalone - each is runnable on its own and none
+# imports a third-party package beyond boto3, PyYAML and ruff - so there is
+# no package to build and no lockfile to resolve. mise pins the tools and
+# uv installs the three dependencies, which is the whole of it.
+#
+# The jobs that run inside images/Containerfile do not use this: repo-add
+# and makepkg have to come from the same pacman generation that built the
+# packages, so those get python-boto3 and python-yaml from pacman instead.
+
+[tools]
+python = "3.12"
+uv = "0.12"
+ruff = "0.16.6"
+
+[env]
+# keep uv's cache inside the checkout so a runner can cache one directory
+UV_CACHE_DIR = "{{ config_root }}/.uv-cache"
+
+[tasks.install]
+description = "install the script dependencies"
+run = "uv pip install --system -r requirements.txt"
+
+[tasks.lint]
+description = "lint every python file"
+run = "ruff check ."
+
+[tasks.check-config]
+description = "validate packages.yml and the branch manifests"
+run = "python3 scripts/check_config.py"

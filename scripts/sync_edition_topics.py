@@ -14,16 +14,14 @@ graph is removed, so a dropped dependency withdraws the package.
 
 import argparse
 import base64
-import json
 import os
 import re
 import subprocess
 import sys
 import tempfile
-import urllib.error
-import urllib.request
 
-API = "https://api.github.com"
+from gh_api import api
+
 # github topics allow only lowercase alphanumerics and hyphens,
 # so the namespace separator is a hyphen rather than a colon
 PREFIX = "edition-"
@@ -33,22 +31,6 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def log(msg: str) -> None:
     print(msg, file=sys.stderr, flush=True)
-
-
-def api(method: str, path: str, token: str, body: dict | None = None):
-    req = urllib.request.Request(
-        f"{API}{path}",
-        method=method,
-        data=json.dumps(body).encode() if body is not None else None,
-    )
-    req.add_header("Accept", "application/vnd.github+json")
-    req.add_header("Authorization", f"Bearer {token}")
-    try:
-        with urllib.request.urlopen(req) as resp:
-            raw = resp.read()
-            return resp.status, json.loads(raw) if raw else None
-    except urllib.error.HTTPError as e:
-        return e.code, json.loads(e.read() or b"null")
 
 
 def edition_of(pkgbase: str) -> str:

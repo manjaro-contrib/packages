@@ -93,6 +93,8 @@ upload.
 | `sync-codeowners` | on `packages.yml`, cron | writes CODEOWNERS into each package repo from `maintainers` |
 | `sync-package-list` | cron | opens a PR adding repos that carry the topic but are missing from `packages.yml` |
 | `check-upstream-dupes` | weekly, on `packages.yml` | keeps an issue listing packages Arch now ships |
+| `check-config` | on `packages.yml`, `branches/*.yml` | validates both against the expected shape |
+| `lint` | on any `.py` | runs ruff against the pinned rule set |
 | `check-repo` | daily, after each publish | verifies a published branch actually resolves |
 | `report-failures` | hourly | keeps an issue listing workflows whose latest run failed |
 | `rebuild-db` | manual | regenerates a branch's databases from the packages on R2 |
@@ -187,6 +189,16 @@ packages.yml      every package built here, and what it tracks
 gpg-public-key.asc  the repository signing key
 ```
 
+Every package declares which pacman repository it belongs to via `repo:`
+in [`packages.yml`](packages.yml), defaulting to `extra`. Nothing in a
+built package records this - membership is simply which database the
+package appears in - so it can only come from the config, and declaring it
+now means a split later is a publishing change over data that already
+exists rather than a migration.
+
+All 25 packages are `extra` today. `core` is the boot-critical set and
+`multilib` the 32-bit compatibility set; upstream is 96% `extra`.
+
 Objects are laid out as `<branch>/<arch>/`, alongside BoxIt-style `state`
 files at the root and per branch, mirroring what Manjaro's own mirrors
 serve so mirror tooling can poll a hash instead of walking the tree.
@@ -203,6 +215,21 @@ minting a short-lived token per run. Commits an App makes through the API
 are signed by GitHub, so `required_signatures` can be enforced without any
 signing key in CI, and the App's permissions cover every repository in the
 organization without a long-lived personal token.
+
+Tool and dependency versions live in [`mise.toml`](mise.toml) and
+[`requirements.txt`](requirements.txt), so a workstation and a runner
+install the same thing:
+
+```sh
+mise install        # python, uv and ruff at the pinned versions
+mise run install    # boto3 and PyYAML via uv
+mise run lint       # ruff
+```
+
+The jobs that run inside `images/Containerfile` take their dependencies
+from pacman instead: `repo-add` and `makepkg` must come from the same
+pacman generation that built the packages, so those images pin
+`python-boto3` and `python-yaml` rather than installing them per run.
 
 The scripts run locally against the same environment variables, which is
 the fastest way to check a change before pushing it:

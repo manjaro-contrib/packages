@@ -1,0 +1,18 @@
+# Pinned so CI and a workstation agree. Without this file the selection is
+# whatever the installed ruff defaults to, which changes between releases -
+# CI would then reject code that passes locally, or accept code that does
+# not, and neither failure points at the version as the cause.
+
+target-version = "py311"
+
+[lint]
+# ruff's default (E4, E7, E9, F) plus the families these scripts were
+# already written against: import order, and the checks that caught real
+# bugs during development - a blind except, an implicit concatenation
+# inside a list, a deprecated regex alias.
+select = ["E4", "E7", "E9", "F", "I", "BLE", "ISC", "FURB", "UP", "B"]
+
+[lint.per-file-ignores]
+# line length is not enforced, so the long log and error strings stay on
+# one line where breaking them would hide what they say
+"*" = ["E501"]

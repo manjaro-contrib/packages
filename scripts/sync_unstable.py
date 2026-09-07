@@ -24,8 +24,8 @@ import subprocess
 import sys
 import tempfile
 
-import yaml
 from botocore.exceptions import ClientError
+from catalog import load as load_catalog
 from repo_common import DB_SUFFIXES, list_packages, s3_client
 from repo_remove import pkgname_of
 from repo_state import write_state
@@ -124,8 +124,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    with open(args.config) as f:
-        allowed = set(yaml.safe_load(f)["packages"] or {})
+    allowed = set(load_catalog(args.config))
     if not allowed:
         # an empty list would withdraw everything; a truncated config is
         # far likelier than a deliberate wipe
