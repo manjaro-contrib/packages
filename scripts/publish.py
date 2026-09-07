@@ -8,6 +8,7 @@ concurrency lock — two concurrent publishes would clobber the database.
 """
 
 import argparse
+import functools
 import glob
 import os
 import subprocess
@@ -15,7 +16,7 @@ import sys
 
 from botocore.exceptions import ClientError
 from repo_common import DB_SUFFIXES, s3_client
-from repo_remove import artifacts_for, pkgname_of
+from repo_remove import artifacts_for, pkgname_of, version_of
 from repo_state import write_state
 
 
@@ -25,20 +26,62 @@ def log(msg: str) -> None:
 
 
 
-def prune_superseded(s3, bucket: str, prefix: str, published: list[str]) -> None:
+def _versions_newest_last(names: list[str], pkgname: str) -> list[str]:
+    """Order artifact filenames oldest first, by pacman's own comparison.
+
+    Sorting the strings would put 1.9.0 after 1.10.0, so the wrong file
+    would be treated as newest and kept. vercmp ships with pacman and is
+    the same comparison the client uses.
+    """
+    def compare(a: str, b: str) -> int:
+        va, vb = version_of(a, pkgname), version_of(b, pkgname)
+        out = subprocess.run(
+            ["vercmp", va, vb], capture_output=True, text=True, check=True
+        )
+        return int(out.stdout.strip())
+
+    return sorted(names, key=functools.cmp_to_key(compare))
+
+
+def prune_superseded(
+    s3, bucket: str, prefix: str, published: list[str], keep_previous: int = 1
+) -> None:
     """Drop older versions of just-published packages from the bucket.
 
     repo-add's --remove only unlinks local files, and the previous versions
     exist solely on R2, so they would accumulate forever without this.
+
+    The most recent `keep_previous` superseded versions stay, because a
+    client that read the database a moment ago is still fetching the
+    version it named. Deleting it immediately turns that download into a
+    404 partway through - pacman reports a corrupt or missing package for
+    something that existed when it looked. The database only ever points at
+    the new version, so the old files are unreferenced, just not yet gone.
     """
     keep = set(published)
     for filename in published:
+        superseded = []
         for key in artifacts_for(s3, bucket, prefix, pkgname_of(filename)):
             name = key.removeprefix(prefix)
             if name in keep or name.removesuffix(".sig") in keep:
                 continue
-            s3.delete_object(Bucket=bucket, Key=key)
-            log(f"pruned superseded {name}")
+            superseded.append(key)
+
+        # group by version so a package and its signature are kept or
+        # dropped together; a package without its .sig fails SigLevel
+        by_version = {}
+        for key in superseded:
+            name = key.removeprefix(prefix).removesuffix(".sig")
+            by_version.setdefault(name, []).append(key)
+
+        # newest last, so the tail is what a client may still be fetching
+        order = _versions_newest_last(list(by_version), pkgname_of(filename))
+        for name in order[: max(0, len(order) - keep_previous)]:
+            for key in by_version[name]:
+                s3.delete_object(Bucket=bucket, Key=key)
+                log(f"pruned superseded {key.removeprefix(prefix)}")
+        for name in order[max(0, len(order) - keep_previous) :]:
+            log(f"kept superseded {name} for in-flight downloads")
 
 
 def main() -> int:

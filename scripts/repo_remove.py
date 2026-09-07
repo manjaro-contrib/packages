@@ -45,6 +45,12 @@ def belongs_to(filename: str, pkgname: str) -> bool:
     return pkgname_of(filename) == pkgname
 
 
+def version_of(filename: str, name: str) -> str:
+    """The version in `name-version-arch.pkg.tar.zst`; only arch follows it."""
+    rest = filename[len(name) + 1 :].removesuffix(".pkg.tar.zst")
+    return rest.rsplit("-", 1)[0]
+
+
 def artifacts_for(s3, bucket: str, prefix: str, pkgname: str) -> list[str]:
     keys = []
     paginator = s3.get_paginator("list_objects_v2")

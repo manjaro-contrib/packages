@@ -17,19 +17,13 @@ import sys
 from gh_api import api, commit_file, reset_branch
 from manifest import dump, load, path_for
 from repo_common import FLOW, list_packages, s3_client
-from repo_remove import pkgname_of
+from repo_remove import pkgname_of, version_of
 
 
 def log(msg: str) -> None:
     print(msg, file=sys.stderr, flush=True)
 
 
-
-
-def version_of(filename: str, name: str) -> str:
-    # name-version-arch.pkg.tar.zst, and only arch follows the version
-    rest = filename[len(name) + 1 :].removesuffix(".pkg.tar.zst")
-    return rest.rsplit("-", 1)[0]
 
 
 def source_versions(s3, bucket: str, branch: str, arch: str) -> dict[str, str]:

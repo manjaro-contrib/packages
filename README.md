@@ -75,6 +75,12 @@ flowchart LR
   GH -.->|reuse instead of rebuild| B
 ```
 
+Publishing a new version keeps the one it replaces. A client that read the
+database a moment ago is still fetching the version it named, and deleting
+that file immediately turns the download into a 404 partway through. The
+database only ever points at the newest version, so the previous one is
+unreferenced but still downloadable until the version after it lands.
+
 State lives in the bucket, not in a database. A package needs building when
 its `PKGBUILD` version has no matching artifact under the branch prefix, so
 the check is a stateless comparison that survives a lost run or a manual
