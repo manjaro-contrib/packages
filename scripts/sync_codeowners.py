@@ -12,15 +12,14 @@ can run on a schedule without churning commits.
 
 import argparse
 import base64
-import json
 import os
 import sys
 import urllib.error
 import urllib.request
 
 import yaml
+from gh_api import api
 
-API = "https://api.github.com"
 PATH = ".github/CODEOWNERS"
 HEADER = """\
 # Generated from packages.yml in manjaro-contrib/packages; edit it there.
@@ -30,22 +29,6 @@ HEADER = """\
 
 def log(msg: str) -> None:
     print(msg, file=sys.stderr, flush=True)
-
-
-def api(method: str, path: str, token: str, body: dict | None = None):
-    req = urllib.request.Request(
-        f"{API}{path}",
-        method=method,
-        data=json.dumps(body).encode() if body is not None else None,
-    )
-    req.add_header("Accept", "application/vnd.github+json")
-    req.add_header("Authorization", f"Bearer {token}")
-    try:
-        with urllib.request.urlopen(req) as resp:
-            raw = resp.read()
-            return resp.status, json.loads(raw) if raw else None
-    except urllib.error.HTTPError as e:
-        return e.code, json.loads(e.read() or b"null")
 
 
 def render(maintainers: list[str]) -> str:
