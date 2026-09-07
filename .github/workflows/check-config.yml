@@ -1,0 +1,25 @@
+name: check-config
+
+on:
+  pull_request:
+    paths:
+      - packages.yml
+      - branches/*.yml
+      - scripts/check_config.py
+  push:
+    branches: [main]
+    paths:
+      - packages.yml
+      - branches/*.yml
+      - scripts/check_config.py
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: install tooling
+        run: pip install pyyaml
+      - name: validate the config and manifests
+        run: python3 scripts/check_config.py
