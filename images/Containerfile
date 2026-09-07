@@ -9,6 +9,10 @@
 # file". Both bases below ship pacman 7.1.0.r9.g54d9411-2, so that holds
 # across the per-architecture split.
 
+# declared before the first FROM: an ARG after one is scoped to that
+# stage, and a later FROM expands it to nothing
+ARG BUILDER_BASE=manjarolinux/base:latest
+
 FROM manjarolinux/base:latest AS repo
 # publish, promote and remove: rewrite the database and talk to R2
 RUN pacman -Syu --noconfirm --needed \
@@ -31,7 +35,6 @@ RUN install -dm700 /root/.gnupg
 #
 # Arch Linux ARM tracks Arch closely - gcc 16.1.1, glibc 2.43, rust 1.98.1,
 # the same rust Manjaro x86 ships - so aarch64 builds there instead.
-ARG BUILDER_BASE=manjarolinux/base:latest
 FROM ${BUILDER_BASE} AS builder
 RUN pacman -Syu --noconfirm --needed \
       base-devel git sudo python gnupg curl && \
