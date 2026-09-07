@@ -6,6 +6,8 @@
  * plain bytes with working range requests.
  */
 
+import { FAVICON } from './favicon.js';
+
 const REPO_NAME = 'manjaro-contrib';
 
 const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -44,6 +46,7 @@ export function renderListing(prefix, dirs, files) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <title>/${escapeHtml(prefix)} — ${REPO_NAME}</title>
 <style>
 :root { color-scheme: light dark; }
@@ -98,6 +101,17 @@ export default {
 
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       return new Response('method not allowed', { status: 405 });
+    }
+
+    if (key === 'favicon.svg' || key === 'favicon.ico') {
+      // one svg answers both: browsers asking for .ico accept an svg body,
+      // and a second rasterised copy would be another thing to keep in step
+      return new Response(FAVICON, {
+        headers: {
+          'content-type': 'image/svg+xml',
+          'cache-control': 'public, max-age=86400',
+        },
+      });
     }
 
     if (key === '' || key.endsWith('/')) {
