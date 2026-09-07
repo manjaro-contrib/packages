@@ -35,7 +35,3 @@ def dump(branch: str, packages: dict[str, str], root: str = ".") -> str:
     return f"{HEADER}\npackages:\n{body}" if packages else f"{HEADER}\npackages: {{}}\n"
 
 
-def save(branch: str, packages: dict[str, str], root: str = ".") -> None:
-    p = path_for(branch, root)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(dump(branch, packages, root))

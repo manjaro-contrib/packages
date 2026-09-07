@@ -35,9 +35,3 @@ def repo_of(entry: dict) -> str:
     return repo
 
 
-def by_repo(config: str = CONFIG) -> dict[str, list[str]]:
-    """Package names grouped by the repository they are published into."""
-    grouped: dict[str, list[str]] = {}
-    for name, entry in load(config).items():
-        grouped.setdefault(repo_of(entry), []).append(name)
-    return {repo: sorted(names) for repo, names in sorted(grouped.items())}
