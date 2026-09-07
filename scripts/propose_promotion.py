@@ -14,9 +14,10 @@ import argparse
 import os
 import sys
 
+from catalog import REPOS
 from gh_api import api, commit_file, reset_branch
 from manifest import dump, load, path_for
-from repo_common import FLOW, list_packages, s3_client
+from repo_common import FLOW, list_packages, prefix_for, s3_client
 from repo_remove import pkgname_of
 
 
@@ -33,11 +34,17 @@ def version_of(filename: str, name: str) -> str:
 
 
 def source_versions(s3, bucket: str, branch: str, arch: str) -> dict[str, str]:
+    """Every package version the source branch carries, across repositories.
+
+    A manifest names packages, not repositories, so all of them are walked:
+    membership is a publishing decision that promotion does not change.
+    """
     versions = {}
-    for key in list_packages(s3, bucket, f"{branch}/{arch}/"):
-        name = pkgname_of(key)
-        if name:
-            versions[name] = version_of(key, name)
+    for repo in REPOS:
+        for key in list_packages(s3, bucket, prefix_for(branch, arch, repo)):
+            name = pkgname_of(key)
+            if name:
+                versions[name] = version_of(key, name)
     return versions
 
 
