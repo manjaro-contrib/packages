@@ -14,9 +14,10 @@ import argparse
 import os
 import sys
 
+from catalog import REPOS
 from gh_api import api, commit_file, reset_branch
 from manifest import dump, load, path_for
-from repo_common import FLOW, list_packages, s3_client
+from repo_common import FLOW, list_packages, prefix_for, s3_client
 from repo_remove import pkgname_of
 
 
@@ -33,12 +34,42 @@ def version_of(filename: str, name: str) -> str:
 
 
 def source_versions(s3, bucket: str, branch: str, arch: str) -> dict[str, str]:
+    """Every package version the source branch carries, across repositories.
+
+    A manifest names packages, not repositories, so all of them are walked:
+    membership is a publishing decision that promotion does not change.
+    """
     versions = {}
-    for key in list_packages(s3, bucket, f"{branch}/{arch}/"):
-        name = pkgname_of(key)
-        if name:
-            versions[name] = version_of(key, name)
+    for repo in REPOS:
+        for key in list_packages(s3, bucket, prefix_for(branch, arch, repo)):
+            name = pkgname_of(key)
+            if name:
+                versions[name] = version_of(key, name)
     return versions
+
+
+def summarise(current: dict, proposed: dict, branch: str) -> str:
+    """A title that names what the proposal does, withdrawals included.
+
+    "promote 0 package(s)" described a proposal that withdrew all 25 as
+    accurately as it described one that changed nothing, so the count of
+    packages carried is not enough on its own.
+    """
+    added = len(set(proposed) - set(current))
+    removed = len(set(current) - set(proposed))
+    changed = sum(1 for k in current.keys() & proposed.keys() if current[k] != proposed[k])
+    parts = []
+    if added:
+        parts.append(f"add {added}")
+    if changed:
+        parts.append(f"update {changed}")
+    if removed:
+        # first, and never abbreviated: withdrawing is the one direction
+        # that loses something
+        parts.insert(0, f"withdraw {removed}")
+    if not parts:
+        parts.append("no change")
+    return f"{', '.join(parts)} in {branch}"
 
 
 def describe(current: dict, proposed: dict) -> str:
@@ -95,7 +126,7 @@ def main() -> int:
         args.repo,
         str(path_for(args.branch)),
         dump(args.branch, proposed),
-        f"chore: promote {len(proposed)} package(s) to {args.branch}",
+        f"chore: {summarise(current, proposed, args.branch)}",
         head,
         token,
     )
@@ -107,7 +138,10 @@ def main() -> int:
             "PATCH",
             f"/repos/{args.repo}/pulls/{prs[0]['number']}",
             token,
-            {"body": describe(current, proposed)},
+            {
+                "title": summarise(current, proposed, args.branch),
+                "body": describe(current, proposed),
+            },
         )
         return 0
 
@@ -116,7 +150,7 @@ def main() -> int:
         f"/repos/{args.repo}/pulls",
         token,
         {
-            "title": f"promote {len(proposed)} package(s) to {args.branch}",
+            "title": summarise(current, proposed, args.branch),
             "head": head,
             "base": args.base,
             "body": describe(current, proposed),
