@@ -16,7 +16,7 @@ import sys
 from botocore.exceptions import ClientError
 from catalog import load as load_catalog
 from catalog import repo_of
-from repo_common import DB_SUFFIXES, prefix_for, s3_client
+from repo_common import DB_SUFFIXES, db_name_for, prefix_for, s3_client
 from repo_remove import artifacts_for, pkgname_of
 from repo_state import write_state
 
@@ -48,7 +48,6 @@ def main() -> int:
     parser.add_argument("--pkg-dir", required=True, help="directory of built packages")
     parser.add_argument("--branch", default="unstable")
     parser.add_argument("--arch", default="x86_64")
-    parser.add_argument("--db-name", default="manjaro-contrib")
     args = parser.parse_args()
 
     packages = sorted(glob.glob(os.path.join(args.pkg_dir, "*.pkg.tar.zst")))
@@ -70,11 +69,12 @@ def main() -> int:
     for repo in sorted(grouped):
         members = grouped[repo]
         prefix = prefix_for(args.branch, args.arch, repo)
-        db_file = os.path.join(args.pkg_dir, f"{args.db_name}.db.tar.gz")
+        db_name = db_name_for(repo)
+        db_file = os.path.join(args.pkg_dir, f"{db_name}.db.tar.gz")
 
         # a previous repository in this loop leaves its database behind, and
         # repo-add would extend it rather than start the next one clean
-        for stale in glob.glob(os.path.join(args.pkg_dir, f"{args.db_name}.*")):
+        for stale in glob.glob(os.path.join(args.pkg_dir, f"{db_name}.*")):
             os.remove(stale)
 
         # both databases must be fetched: repo-add updates whichever files it
@@ -82,14 +82,14 @@ def main() -> int:
         # .db present rebuilt .files from the current build alone, dropping
         # every other package's file list
         for suffix in (".db.tar.gz", ".files.tar.gz"):
-            local = os.path.join(args.pkg_dir, f"{args.db_name}{suffix}")
+            local = os.path.join(args.pkg_dir, f"{db_name}{suffix}")
             try:
-                s3.download_file(bucket, prefix + f"{args.db_name}{suffix}", local)
-                log(f"{repo}: downloaded existing {args.db_name}{suffix}")
+                s3.download_file(bucket, prefix + f"{db_name}{suffix}", local)
+                log(f"{repo}: downloaded existing {db_name}{suffix}")
             except ClientError as e:
                 if e.response["Error"]["Code"] not in ("NoSuchKey", "404"):
                     raise
-                log(f"{repo}: no {args.db_name}{suffix} yet, repo-add will create one")
+                log(f"{repo}: no {db_name}{suffix} yet, repo-add will create one")
 
         # --include-sigs records each package's signature in the database, as
         # every Arch and Manjaro repository does; tooling that reads a database
@@ -112,7 +112,7 @@ def main() -> int:
         prune_superseded(s3, bucket, prefix, [os.path.basename(p) for p in members])
 
         for suffix in DB_SUFFIXES:
-            for name in (f"{args.db_name}{suffix}", f"{args.db_name}{suffix}.sig"):
+            for name in (f"{db_name}{suffix}", f"{db_name}{suffix}.sig"):
                 local = os.path.join(args.pkg_dir, name)
                 # repo-add writes .db/.files as symlinks; upload the real bytes
                 real = os.path.realpath(local)

@@ -14,7 +14,7 @@ import tempfile
 
 from botocore.exceptions import ClientError
 from catalog import REPOS
-from repo_common import DB_SUFFIXES, prefix_for, s3_client
+from repo_common import DB_SUFFIXES, db_name_for, prefix_for, s3_client
 from repo_state import write_state
 
 
@@ -70,7 +70,6 @@ def main() -> int:
         help="comma-separated branches to remove from",
     )
     parser.add_argument("--arches", default="x86_64")
-    parser.add_argument("--db-name", default="manjaro-contrib")
     args = parser.parse_args()
 
     names = [n.strip() for n in args.packages.split(",") if n.strip()]
@@ -89,15 +88,16 @@ def main() -> int:
             # should not have to know which database carries it
             for repo in REPOS:
                 prefix = prefix_for(branch, arch, repo)
+                db_name = db_name_for(repo)
                 with tempfile.TemporaryDirectory() as workdir:
-                    db_file = os.path.join(workdir, f"{args.db_name}.db.tar.gz")
+                    db_file = os.path.join(workdir, f"{db_name}.db.tar.gz")
                     # .files must come along: repo-remove rewrites whichever
                     # databases are present and leaves the absent one stale
                     for suffix in (".db.tar.gz", ".files.tar.gz"):
-                        local = os.path.join(workdir, f"{args.db_name}{suffix}")
+                        local = os.path.join(workdir, f"{db_name}{suffix}")
                         try:
                             s3.download_file(
-                                bucket, prefix + f"{args.db_name}{suffix}", local
+                                bucket, prefix + f"{db_name}{suffix}", local
                             )
                         except ClientError as e:
                             if e.response["Error"]["Code"] not in (
@@ -124,8 +124,8 @@ def main() -> int:
 
                     for suffix in DB_SUFFIXES:
                         for name in (
-                            f"{args.db_name}{suffix}",
-                            f"{args.db_name}{suffix}.sig",
+                            f"{db_name}{suffix}",
+                            f"{db_name}{suffix}.sig",
                         ):
                             local = os.path.join(workdir, name)
                             real = os.path.realpath(local)

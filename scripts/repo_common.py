@@ -6,6 +6,17 @@ import boto3
 
 DB_SUFFIXES = [".db", ".db.tar.gz", ".files", ".files.tar.gz"]
 
+def db_name_for(repo: str) -> str:
+    """The database filename stem for a repository.
+
+    Upstream names each database after its repository - core.db, extra.db -
+    and pacman derives the filename from the section name in pacman.conf,
+    so [extra] fetches extra.db and nothing else. A single name shared
+    across repositories would be unreadable by a stock client.
+    """
+    return repo
+
+
 def prefix_for(branch: str, arch: str, repo: str) -> str:
     """Where a repository's objects live for a branch and architecture.
 

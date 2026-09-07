@@ -27,7 +27,7 @@ import tempfile
 from botocore.exceptions import ClientError
 from catalog import REPOS
 from catalog import load as load_catalog
-from repo_common import DB_SUFFIXES, list_packages, prefix_for, s3_client
+from repo_common import DB_SUFFIXES, db_name_for, list_packages, prefix_for, s3_client
 from repo_remove import pkgname_of
 from repo_state import write_state
 
@@ -52,12 +52,12 @@ def withdraw(
     branch: str,
     arch: str,
     repo: str,
-    db_name: str,
     allowed: set[str],
     dry_run: bool,
 ) -> list[str]:
     """Delete unlisted packages from one branch. Returns the names removed."""
     prefix = prefix_for(branch, arch, repo)
+    db_name = db_name_for(repo)
     found = orphans(s3, bucket, prefix, allowed)
     if not found:
         log(f"{branch}/{repo}/{arch}: nothing to withdraw")
@@ -118,7 +118,6 @@ def main() -> int:
     parser.add_argument("--config", default="packages.yml")
     parser.add_argument("--branch", default="unstable")
     parser.add_argument("--arches", default="x86_64")
-    parser.add_argument("--db-name", default="manjaro-contrib")
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -140,8 +139,7 @@ def main() -> int:
     for arch in [a.strip() for a in args.arches.split(",") if a.strip()]:
         for repo in REPOS:
             removed += withdraw(
-                s3, bucket, args.branch, arch, repo, args.db_name, allowed,
-                args.dry_run,
+                s3, bucket, args.branch, arch, repo, allowed, args.dry_run
             )
 
     if removed and not args.dry_run:

@@ -24,7 +24,7 @@ import tempfile
 
 from botocore.exceptions import ClientError
 from catalog import REPOS
-from repo_common import DB_SUFFIXES, list_packages, prefix_for, s3_client
+from repo_common import DB_SUFFIXES, db_name_for, list_packages, prefix_for, s3_client
 from repo_state import write_state
 
 
@@ -39,10 +39,11 @@ def entry_count(path: str) -> int:
 
 
 def rebuild(
-    s3, bucket: str, branch: str, arch: str, repo: str, db_name: str, dry_run: bool
+    s3, bucket: str, branch: str, arch: str, repo: str, dry_run: bool
 ) -> int:
-    """Rebuild one branch's databases. Returns the package count."""
+    """Rebuild one repository's databases. Returns the package count."""
     prefix = prefix_for(branch, arch, repo)
+    db_name = db_name_for(repo)
     names = list_packages(s3, bucket, prefix)
     if not names:
         log(f"{branch}/{repo}/{arch}: no packages, nothing to rebuild")
@@ -102,7 +103,6 @@ def main() -> int:
         help="comma-separated branches to rebuild",
     )
     parser.add_argument("--arches", default="x86_64")
-    parser.add_argument("--db-name", default="manjaro-contrib")
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -117,9 +117,7 @@ def main() -> int:
     for branch in [b.strip() for b in args.branches.split(",") if b.strip()]:
         for arch in [a.strip() for a in args.arches.split(",") if a.strip()]:
             for repo in REPOS:
-                if rebuild(
-                    s3, bucket, branch, arch, repo, args.db_name, args.dry_run
-                ):
+                if rebuild(s3, bucket, branch, arch, repo, args.dry_run):
                     wrote = wrote or not args.dry_run
 
     if wrote:

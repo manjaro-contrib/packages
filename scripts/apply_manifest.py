@@ -22,7 +22,14 @@ from catalog import load as load_catalog
 from manifest import load
 from release_store import download as fetch_release
 from release_store import get_release
-from repo_common import DB_SUFFIXES, FLOW, list_packages, prefix_for, s3_client
+from repo_common import (
+    DB_SUFFIXES,
+    FLOW,
+    db_name_for,
+    list_packages,
+    prefix_for,
+    s3_client,
+)
 from repo_remove import pkgname_of
 from repo_state import write_state
 
@@ -121,7 +128,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--branch", required=True)
     parser.add_argument("--arch", default="x86_64")
-    parser.add_argument("--db-name", default="manjaro-contrib")
     parser.add_argument("--root", default=".")
     parser.add_argument(
         "--org",
@@ -155,6 +161,7 @@ def main() -> int:
             for name, version in wanted.items()
             if repo_of(catalog.get(name, {})) == repo
         }
+        db_name = db_name_for(repo)
         src_prefix = prefix_for(source, args.arch, repo)
         dst_prefix = prefix_for(args.branch, args.arch, repo)
 
@@ -237,7 +244,7 @@ def main() -> int:
                     if e.response["Error"]["Code"] not in ("NoSuchKey", "404"):
                         raise
 
-            db_file = os.path.join(workdir, f"{args.db_name}.db.tar.gz")
+            db_file = os.path.join(workdir, f"{db_name}.db.tar.gz")
             if paths:
                 # --include-sigs records each package's signature in the
                 # database, matching every Arch and Manjaro repository;
@@ -250,8 +257,8 @@ def main() -> int:
 
             for suffix in DB_SUFFIXES:
                 for fname in (
-                    f"{args.db_name}{suffix}",
-                    f"{args.db_name}{suffix}.sig",
+                    f"{db_name}{suffix}",
+                    f"{db_name}{suffix}.sig",
                 ):
                     real = os.path.realpath(os.path.join(workdir, fname))
                     if not os.path.exists(real):

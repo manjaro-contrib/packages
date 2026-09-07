@@ -41,6 +41,12 @@ SigLevel = Required DatabaseRequired
 Server = https://packages.manjaro.download/unstable/extra/$arch
 ```
 
+The layout matches an upstream Manjaro mirror, so a `pacman.conf` written
+against one works here with only the `Server` line changed: `$repo/$arch`
+resolves the same way, and each database is named after its repository -
+`extra.db`, not a single shared name, which is what pacman derives from
+the section name.
+
 Every package is `extra` today, so that one section is enough. `core` and
 `multilib` follow the same shape, and exist so a client can mirror
 Manjaro's own `pacman.conf` structure and set `SigLevel` or `Usage` per
@@ -52,6 +58,13 @@ Server = https://packages.manjaro.download/unstable/core/$arch
 
 [multilib]
 Server = https://packages.manjaro.download/unstable/multilib/$arch
+```
+
+`$repo/$arch` also resolves, as on an upstream mirror, so one line can
+serve every repository:
+
+```ini
+Server = https://packages.manjaro.download/unstable/$repo/$arch
 ```
 
 Swap `unstable` for `testing` or `stable` to follow a slower branch.
