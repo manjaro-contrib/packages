@@ -67,6 +67,26 @@ serve every repository:
 Server = https://packages.manjaro.download/unstable/$repo/$arch
 ```
 
+### aarch64
+
+Upstream serves arm as a separate tree - `arm-stable/core/aarch64/` - so a
+`pacman.conf` copied from a Manjaro ARM mirror expects that shape. We
+store the architecture below the repository instead, keeping a branch in
+one place rather than splitting each in two:
+
+```
+unstable/extra/aarch64/
+```
+
+`arm-<branch>` is served as an alias of it, so both work:
+
+```ini
+Server = https://packages.manjaro.download/arm-unstable/$repo
+```
+
+Only `aarch64` is aliased. `arm-stable/core/x86_64` does not exist
+upstream either, so honouring it would invent a path no mirror serves.
+
 Swap `unstable` for `testing` or `stable` to follow a slower branch.
 `SigLevel = Required DatabaseRequired` verifies both the packages and the
 database index — without `DatabaseRequired` a signed package set can still
