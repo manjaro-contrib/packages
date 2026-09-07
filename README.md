@@ -114,6 +114,12 @@ Reviewing the diff is the approval step, so what shipped and who approved
 it is in git history. Editing a manifest by hand works the same way -
 pinning an older version rolls back, deleting an entry withdraws a package.
 
+A rollback keeps working after the version has been superseded. Publishing
+prunes the older build from the bucket, but every build is also kept as a
+release asset on its own package repository, so `apply-manifest` restores
+a pinned version from there when the branch it promotes from no longer
+carries it.
+
 `unstable` has no manifest, because it is built into rather than promoted
 into. [`packages.yml`](packages.yml) plays that role instead: it already
 authorises builds, and `sync-unstable` makes it authoritative for what

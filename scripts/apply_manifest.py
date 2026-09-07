@@ -18,6 +18,8 @@ import tempfile
 
 from botocore.exceptions import ClientError
 from manifest import load
+from release_store import download as fetch_release
+from release_store import get_release
 from repo_common import DB_SUFFIXES, FLOW, list_packages, s3_client
 from repo_remove import pkgname_of
 from repo_state import write_state
@@ -57,7 +59,7 @@ def plan(s3, bucket: str, src_prefix: str, dst_prefix: str, wanted: dict) -> dic
             continue
         source = artifact_for(s3, bucket, src_prefix, name, version)
         if source is None:
-            missing.append(f"{name} {version}")
+            missing.append((name, version))
             continue
         add.append(source)
         remove += current
@@ -68,12 +70,63 @@ def plan(s3, bucket: str, src_prefix: str, dst_prefix: str, wanted: dict) -> dic
     return {"add": add, "remove": remove, "keep": keep, "missing": missing}
 
 
+def restore(
+    s3, bucket: str, org: str, src_prefix: str, missing: list, token: str
+) -> list[str]:
+    """Put superseded versions back into the source branch from their releases.
+
+    publish prunes a superseded build from the bucket, but every build is
+    also kept as a release asset on its own package repository. Without
+    this, reverting a manifest to an older version - the documented way to
+    roll back - fails the moment that version has been superseded, which
+    is exactly when a rollback is wanted.
+
+    Returns the source keys now available to copy.
+    """
+    recovered = []
+    for name, version in list(missing):
+        repo = f"{org}/{name}"
+        release = get_release(repo, version, token)
+        if release is None:
+            log(f"{name} {version}: no release on {repo}")
+            continue
+        # download() wants the pacman filenames and fetches each .sig
+        # alongside, so ask only for the packages the release carries
+        packages = [
+            a["name"]
+            for a in release.get("assets", [])
+            if a["name"].endswith(".pkg.tar.zst")
+        ]
+        if not packages:
+            log(f"{name} {version}: release carries no package")
+            continue
+        with tempfile.TemporaryDirectory() as workdir:
+            try:
+                fetch_release(repo, version, packages, workdir, token)
+            except RuntimeError as e:
+                log(f"{name} {version}: cannot restore ({e})")
+                continue
+            for filename in sorted(os.listdir(workdir)):
+                s3.upload_file(
+                    os.path.join(workdir, filename), bucket, src_prefix + filename
+                )
+                log(f"{name} {version}: restored {filename} to {src_prefix}")
+        recovered.append((name, version))
+    return recovered
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--branch", required=True)
     parser.add_argument("--arch", default="x86_64")
     parser.add_argument("--db-name", default="manjaro-contrib")
     parser.add_argument("--root", default=".")
+    parser.add_argument(
+        "--org",
+        default="manjaro-contrib",
+        help="organisation holding the package repositories a superseded"
+        " version can be restored from",
+    )
     parser.add_argument(
         "--dry-run", action="store_true", help="report the plan without writing"
     )
@@ -91,12 +144,23 @@ def main() -> int:
     dst_prefix = f"{args.branch}/{args.arch}/"
 
     p = plan(s3, bucket, src_prefix, dst_prefix, wanted)
+
+    # a version the source branch no longer carries may still exist as a
+    # release asset; restoring it is what makes reverting a manifest work
+    if p["missing"] and not args.dry_run:
+        token = os.environ.get("GITHUB_TOKEN")
+        if token:
+            if restore(s3, bucket, args.org, src_prefix, p["missing"], token):
+                p = plan(s3, bucket, src_prefix, dst_prefix, wanted)
+        else:
+            log("GITHUB_TOKEN unset, cannot restore from the release store")
+
     for kind in ("add", "remove"):
         for key in p[kind]:
             log(f"{kind}: {key}")
     if p["missing"]:
-        for entry in p["missing"]:
-            log(f"ERROR: {entry} is not available in {source}")
+        for name, version in p["missing"]:
+            log(f"ERROR: {name} {version} is not in {source} or its release store")
         return 1
     if not p["add"] and not p["remove"]:
         log(f"{args.branch} already matches its manifest")
