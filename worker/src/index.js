@@ -72,22 +72,15 @@ ${rows || '<p>empty</p>'}
 /**
  * The stored key an upstream-style arm path refers to.
  *
- * Upstream serves arm as a separate tree - arm-stable/core/aarch64/ - so a
- * pacman.conf copied from a Manjaro ARM mirror asks for that shape. We
- * store one branch per name with the architecture below the repository,
- * which keeps every branch in one place instead of splitting each in two.
- * Rewriting the request is enough to serve both: arm-<branch> is an alias,
- * not a second layout.
- *
- * Only aarch64 is aliased. arm-stable/core/x86_64 does not exist upstream
- * either, so honouring it would invent a path no mirror serves.
+ * Upstream serves arm as a separate tree (arm-stable/core/aarch64/); we keep
+ * the arch below the repository so a branch lives in one place. Only aarch64
+ * is aliased, since no arm tree carries x86_64 upstream either.
  */
 export function resolveArmAlias(key) {
   const match = key.match(/^arm-(unstable|testing|stable)\/([^/]+)\/(.*)$/);
   if (!match) return null;
   const [, branch, repo, rest] = match;
-  // the arch segment is implied by the tree, so it is absent from the
-  // request; anything already naming an arch is not an upstream arm path
+  // the tree implies the arch, so the request omits it
   if (rest.startsWith('x86_64/')) return null;
   const tail = rest.startsWith('aarch64/') ? rest.slice('aarch64/'.length) : rest;
   return `${branch}/${repo}/aarch64/${tail}`;
@@ -104,8 +97,7 @@ export default {
     }
 
     if (key === 'favicon.svg' || key === 'favicon.ico') {
-      // one svg answers both: browsers asking for .ico accept an svg body,
-      // and a second rasterised copy would be another thing to keep in step
+      // .ico callers accept an svg body, so one file serves both
       return new Response(FAVICON, {
         headers: {
           'content-type': 'image/svg+xml',

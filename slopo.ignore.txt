@@ -1,0 +1,18 @@
+# Clusters triaged as deliberate, so a re-scan reports only what is new.
+# Regenerate a report with: slopo index && slopo embed && slopo analyze
+
+# log(): 16 byte-identical one-line copies. Importing it would add a
+# cross-module dependency to every script to save one line each; the
+# duplication is cheaper than the coupling.
+db1eb2684e31
+
+# main(): argparse setup plus a linear sequence. Structurally alike across
+# scripts because they take the same arguments, semantically distinct.
+e4cc5e84e698
+1eb4fd0f35b2
+11f1af74763a
+
+# repository discovery: sync_package_list wants names and does not
+# paginate; check_updates wants whole objects and does. Sharing one would
+# force a caller to over-fetch.
+a479b5242627

@@ -1,0 +1,15 @@
+source_dir: scripts
+
+source_dir_exclude:
+  - "**/__pycache__/**"
+
+embedding_model: openai/user.jina-code-0.5b
+embedding_dimensions: 896
+embedding_api_key: lemonade
+embedding_batch_chars: 40000
+embedding_params:
+  api_base: http://127.0.0.1:13305/api/v1
+  drop_params: true
+
+similarity_threshold: 0.80
+rerank_threshold: 0.82

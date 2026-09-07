@@ -15,7 +15,6 @@ import argparse
 import base64
 import json
 import os
-import subprocess
 import sys
 import tempfile
 import urllib.error
@@ -23,6 +22,8 @@ import urllib.parse
 import urllib.request
 
 from catalog import load as load_catalog
+from pkgbuild import fields as parse_fields
+from pkgbuild import strip_constraint
 from release_store import get_release, has_assets
 
 TOPIC = "pkg"
@@ -76,35 +77,15 @@ def fetch_pkgbuild(repo: dict, token: str) -> str | None:
 
 
 def parse_pkgbuild(content: str, workdir: str) -> dict | None:
-    path = os.path.join(workdir, "PKGBUILD")
-    with open(path, "w") as f:
-        f.write(content)
-    result = subprocess.run(
-        [os.path.join(SCRIPT_DIR, "parse_pkgbuild.sh"), path],
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=False,
-    )
-    if result.returncode != 0:
-        log(f"  parse failed: {result.stderr.strip()}")
+    fields, error = parse_fields(content, workdir)
+    if fields is None:
+        log(f"  parse failed: {error}")
         return None
-    fields = dict(
-        line.split("=", 1) for line in result.stdout.splitlines() if "=" in line
-    )
     fields["pkgname"] = fields["pkgname"].split()
     fields["arch"] = fields["arch"].split()
-    fields["provides"] = [strip_constraint(d) for d in fields.get("provides", "").split()]
-    fields["depends"] = [strip_constraint(d) for d in fields.get("depends", "").split()]
+    for key in ("provides", "depends"):
+        fields[key] = [strip_constraint(d) for d in fields.get(key, "").split()]
     return fields
-
-
-def strip_constraint(dep: str) -> str:
-    """`foo>=1.2` and `foo=1.2` both name the package `foo`."""
-    for sep in (">=", "<=", ">", "<", "="):
-        if sep in dep:
-            return dep.split(sep, 1)[0]
-    return dep
 
 
 def assign_waves(pending: list[dict]) -> None:
