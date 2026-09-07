@@ -30,7 +30,7 @@ import tarfile
 import urllib.error
 import urllib.request
 
-import yaml
+from catalog import load as load_catalog
 from gh_api import keep_issue
 
 # arch's repositories, in the order pacman would search them
@@ -132,8 +132,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    with open(args.config) as f:
-        packages = yaml.safe_load(f)["packages"] or {}
+    packages = load_catalog(args.config)
 
     log(f"fetching arch {args.arch} databases")
     upstream = arch_packages(args.arch)

@@ -187,6 +187,16 @@ packages.yml      every package built here, and what it tracks
 gpg-public-key.asc  the repository signing key
 ```
 
+Every package declares which pacman repository it belongs to via `repo:`
+in [`packages.yml`](packages.yml), defaulting to `extra`. Nothing in a
+built package records this - membership is simply which database the
+package appears in - so it can only come from the config, and declaring it
+now means a split later is a publishing change over data that already
+exists rather than a migration.
+
+All 25 packages are `extra` today. `core` is the boot-critical set and
+`multilib` the 32-bit compatibility set; upstream is 96% `extra`.
+
 Objects are laid out as `<branch>/<arch>/`, alongside BoxIt-style `state`
 files at the root and per branch, mirroring what Manjaro's own mirrors
 serve so mirror tooling can poll a hash instead of walking the tree.
