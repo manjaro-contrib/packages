@@ -84,12 +84,24 @@ jobs:
           pacman-key --init
           pacman-key --add /tmp/contrib.asc
           pacman-key --lsign-key "$GPG_KEYID"
-          # the section name is the database name, so each repository needs
-          # its own; $repo and $arch are expanded by pacman, not the shell
+          # The section name is the database name, so contrib's core has to
+          # live in [core] - it cannot be renamed. Appending a second [core]
+          # does not work either: pacman discards a repeated section outright
+          # and the contrib server never registers. So the server goes inside
+          # the section the base image already declares, ahead of its Include,
+          # which makes contrib the first mirror pacman tries.
+          #
+          # $arch is expanded by pacman, not the shell.
           # shellcheck disable=SC2016
           for repo in core extra multilib; do
-            printf '\n[%s]\nSigLevel = Required DatabaseRequired\nServer = %s/%s/$repo/$arch\n' \
-              "$repo" "$REPO_URL" "$BRANCH" >> /etc/pacman.conf
+            if grep -q "^\[$repo\]" /etc/pacman.conf; then
+              sed -i "/^\[$repo\]/a Server = $REPO_URL/$BRANCH/$repo/\$arch" /etc/pacman.conf
+            else
+              # multilib is commented out on some bases, and absent on Arch
+              # Linux ARM; declare it rather than silently skipping contrib
+              printf '\n[%s]\nSigLevel = Required DatabaseRequired\nServer = %s/%s/%s/$arch\n' \
+                "$repo" "$REPO_URL" "$BRANCH" "$repo" >> /etc/pacman.conf
+            fi
           done
           pacman -Sy --noconfirm
       - name: mint an app token
