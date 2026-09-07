@@ -15,3 +15,5 @@ sway-signing-key.b64
 *.db.tar.gz
 *.files
 *.files.tar.gz
+slopo.db
+slopo-report/
