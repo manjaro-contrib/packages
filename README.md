@@ -253,6 +253,37 @@ Objects are laid out as `<branch>/<repo>/<arch>/`, alongside BoxIt-style `state`
 files at the root and per branch, mirroring what Manjaro's own mirrors
 serve so mirror tooling can poll a hash instead of walking the tree.
 
+## Building a package locally
+
+`scripts/try_build.sh` runs one package through the same container CI
+uses, so an architecture-specific failure can be reproduced without
+pushing a branch and waiting for a runner:
+
+```sh
+scripts/try_build.sh --repo pacseek                    # host architecture
+scripts/try_build.sh --repo pacseek --arch aarch64     # needs binfmt, below
+scripts/try_build.sh --dir . --shell                   # poke around instead
+```
+
+The prebuilt image is private, so pulling it needs a token with
+`read:packages`. Without one, point `IMAGE` at the public base image and
+the script installs the toolchain itself:
+
+```sh
+IMAGE=manjarolinux/base:latest scripts/try_build.sh --repo pacseek
+```
+
+Building a foreign architecture needs a `binfmt_misc` handler registered
+on the host:
+
+```sh
+sudo docker run --privileged --rm tonistiigi/binfmt --install aarch64
+```
+
+Rootless Docker cannot do this - the install runs inside a container and
+never reaches the host - so a foreign architecture there has to go
+through CI, which builds it natively anyway.
+
 ## Operating
 
 Configuration lives in GitHub. Variables: `REPO_URL`, `GPG_KEYID`,

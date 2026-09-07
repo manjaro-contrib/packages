@@ -222,6 +222,11 @@ def main() -> int:
             fields = parse_pkgbuild(content, workdir)
         if fields is None:
             continue
+        # a PKGBUILD that does not declare the target architecture cannot be
+        # built for it. 'any' declares every architecture.
+        if "any" not in fields["arch"] and args.arch not in fields["arch"]:
+            log(f"  does not build for {args.arch}, skipping")
+            continue
         version = full_version(fields)
         artifacts = artifact_names(fields, args.arch)
         missing = [
