@@ -31,6 +31,34 @@
 
 packages:
   # tracked against the AUR
+  packages-multilib-lib32-audit:
+    upstream: https://aur.archlinux.org/lib32-audit.git
+    repo: multilib
+    maintainers: ["boredland"]
+  packages-multilib-lib32-duktape:
+    upstream: https://aur.archlinux.org/lib32-duktape.git
+    repo: multilib
+    maintainers: ["boredland"]
+  packages-multilib-lib32-flex:
+    upstream: https://aur.archlinux.org/lib32-flex.git
+    repo: multilib
+    maintainers: ["boredland"]
+  packages-multilib-lib32-libbpf:
+    upstream: https://aur.archlinux.org/lib32-libbpf.git
+    repo: multilib
+    maintainers: ["boredland"]
+  packages-multilib-lib32-libtirpc:
+    upstream: https://aur.archlinux.org/lib32-libtirpc.git
+    repo: multilib
+    maintainers: ["boredland"]
+  packages-multilib-lib32-libwebp:
+    upstream: https://aur.archlinux.org/lib32-libwebp.git
+    repo: multilib
+    maintainers: ["boredland"]
+  packages-multilib-lib32-lz4:
+    upstream: https://aur.archlinux.org/lib32-lz4.git
+    repo: multilib
+    maintainers: ["boredland"]
   bluetuith:
     upstream: https://aur.archlinux.org/bluetuith.git
     maintainers: ["boredland"]
