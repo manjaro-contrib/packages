@@ -15,7 +15,7 @@ packages:
   manjaro-sway-settings-git: r2200.a6f38f52-1
   nwg-wrapper: 0.1.3-10
   pacman-log-orphans-hook: 1.1-4
-  pacseek: 1.8.6-2
+  pacseek: 1.8.6-3
   phinger-cursors: 2.1-1
   poweralertd: 0.3.0-1
   python-xpybutil: 0.0.6-5
