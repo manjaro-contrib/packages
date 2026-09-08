@@ -23,9 +23,11 @@ import urllib.parse
 import urllib.request
 
 from catalog import load as load_catalog
+from catalog import repo_for_package
 from pkgbuild import fields as parse_fields
 from pkgbuild import strip_constraint
 from release_store import get_release, has_assets
+from repo_common import prefix_for
 
 import patches
 
@@ -150,8 +152,10 @@ def artifact_names(fields: dict, target_arch: str) -> list[str]:
     ]
 
 
-def exists_on_r2(repo_url: str, branch: str, arch: str, filename: str) -> bool:
-    url = f"{repo_url}/{branch}/{arch}/{urllib.parse.quote(filename)}"
+def exists_on_r2(
+    repo_url: str, branch: str, arch: str, repo: str, filename: str
+) -> bool:
+    url = f"{repo_url}/{prefix_for(branch, arch, repo)}{urllib.parse.quote(filename)}"
     req = urllib.request.Request(url, method="HEAD")
     req.add_header("User-Agent", USER_AGENT)
     try:
@@ -242,10 +246,15 @@ def main() -> int:
             continue
         version = full_version(fields)
         artifacts = artifact_names(fields, args.arch)
+        # the prefix carries the repository, so a lookup without it 404s on
+        # every package and the whole catalog looks unbuilt
+        repo_name = repo_for_package(fields["pkgbase"])
         missing = [
             name
             for name in artifacts
-            if not exists_on_r2(args.repo_url, args.branch, args.arch, name)
+            if not exists_on_r2(
+                args.repo_url, args.branch, args.arch, repo_name, name
+            )
         ]
         if not missing:
             log("  up to date")
