@@ -73,6 +73,9 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  packages-extra-mhwd-ati:
+    repo: extra
+    maintainers: ["boredland"]
   # patched here: upstream's pkgver() reads the clock, and the mirror is
   # force-pushed so it cannot be fixed there. See patches/ for the diff.
   packages-core-manjaro-system:
