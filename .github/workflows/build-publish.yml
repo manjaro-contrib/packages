@@ -150,6 +150,20 @@ jobs:
           ref: ${{ matrix.package.default_branch }}
           token: ${{ steps.app.outputs.token }}
           path: pkg
+      - name: apply local patches
+        # a gitlab-sync mirror is force-pushed, so a fix cannot live in the
+        # package repository; check_updates applies the same patches when it
+        # resolves the version, so the two agree on what is being built
+        if: ${{ !matrix.package.reusable }}
+        run: |
+          python3 - <<'PY'
+          import sys
+          sys.path.insert(0, "builder/scripts")
+          import patches
+          name = "${{ matrix.package.repo }}".split("/")[-1]
+          applied = patches.apply(name, "pkg", root="builder")
+          print(f"applied {applied}" if applied else "no local patches")
+          PY
       - name: import signing key
         if: ${{ !matrix.package.reusable }}
         env:
