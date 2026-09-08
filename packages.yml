@@ -68,6 +68,11 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  # mirrored from gitlab.manjaro.org by gitlab-sync, which force-pushes:
+  # a downstream commit in that repository is overwritten within two hours
+  packages-core-manjaro-release:
+    repo: core
+    maintainers: ["boredland"]
   manjaro-contrib-keyring:
     repo: core
     maintainers: ["boredland"]
