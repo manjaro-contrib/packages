@@ -75,6 +75,8 @@ packages:
   # maintained here; no external upstream
   # patched here: upstream's pkgver() reads the clock, and the mirror is
   # force-pushed so it cannot be fixed there. See patches/ for the diff.
+  packages-core-manjaro-keyring:
+    maintainers: ["boredland"]
   packages-core-manjaro-system:
     repo: core
     maintainers: ["boredland"]
@@ -99,6 +101,14 @@ packages:
   manjaro-sway-settings:
     maintainers: ["boredland"]
   manjaro-sway-settings-git:
+    maintainers: ["boredland"]
+  packages-extra-mhwd:
+    maintainers: ["boredland"]
+  packages-extra-mhwd-amdgpu:
+    maintainers: ["boredland"]
+  packages-extra-mhwd-ati:
+    maintainers: ["boredland"]
+  packages-extra-mhwd-db:
     maintainers: ["boredland"]
   sway-services:
     maintainers: ["boredland"]
