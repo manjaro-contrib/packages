@@ -48,9 +48,20 @@ FROM ${BUILDER_BASE} AS builder
 # makepkg call in the jobs that use the image, which --disable-sandbox on
 # this one transaction did not. It costs nothing: the container is
 # unprivileged and thrown away, and packages are still signature-checked.
+#
+# [multilib] ships commented out on both bases, so lib32-glibc and
+# lib32-gcc-libs cannot be installed and every lib32-* package fails at
+# link time with "skipping incompatible libgcc_s.so.1". The multilib
+# repository #22 created has stayed empty for exactly this reason.
+#
+# lib32-gcc-libs is installed alongside: it owns libgcc_s.so.1, and no
+# lib32-* PKGBUILD declares it because they assume a host with multilib
+# already configured. Without it makepkg -s pulls lib32-glibc alone and
+# the link still fails.
 RUN sed -i 's/^DownloadUser/#DownloadUser/' /etc/pacman.conf && \
+    sed -i '/^#\[multilib\]/,+1 s/^#//' /etc/pacman.conf && \
     pacman -Syu --noconfirm --needed \
-      base-devel git sudo python gnupg curl && \
+      base-devel git sudo python gnupg curl lib32-gcc-libs && \
     pacman -Scc --noconfirm && \
     (id -u builder >/dev/null 2>&1 || useradd -m builder) && \
     echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder && \

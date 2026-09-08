@@ -122,7 +122,14 @@ set -e
 # unconditionally: manjarolinux/base carries makepkg and a builder user
 # but not gcc, so testing for either proves nothing. --needed makes this
 # a no-op on the prebuilt image.
-pacman -Syu --noconfirm --needed base-devel git sudo >/dev/null
+# [multilib] ships commented out, so a lib32-* package cannot install
+# lib32-glibc and fails at link time. Harmless for every other package.
+sed -i "/^#\[multilib\]/,+1 s/^#//" /etc/pacman.conf
+# lib32-gcc-libs owns libgcc_s.so.1 and no lib32-* PKGBUILD declares it -
+# they assume a host with multilib already set up - so makepkg -s installs
+# only lib32-glibc and the link fails on "skipping incompatible
+# libgcc_s.so.1".
+pacman -Syu --noconfirm --needed base-devel git sudo lib32-gcc-libs >/dev/null
 id builder >/dev/null 2>&1 || useradd -m builder
 echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
 cp -r /src /home/builder/pkg
