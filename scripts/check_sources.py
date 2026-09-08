@@ -36,12 +36,30 @@ def log(msg: str) -> None:
     print(msg, file=sys.stderr, flush=True)
 
 
+def expand(text: str, pkgbuild: str) -> str:
+    """Substitute the plain scalar assignments a source entry can reference.
+
+    udev-usb-sync writes `source=("git+${url}.git#tag=$pkgver")` with the
+    host in `url`, so matching the source line alone missed it. Only simple
+    top-level assignments are resolved - enough to see through the common
+    `${url}` and `${_pkgbase}` indirection without evaluating the PKGBUILD.
+    """
+    for name, value in re.findall(
+        r"^(\w+)=[\"']?([^\"'\n()]*)[\"']?$", pkgbuild, re.MULTILINE
+    ):
+        for form in (f"${{{name}}}", f"${name}"):
+            text = text.replace(form, value)
+    return text
+
+
 def blocked_sources(pkgbuild: str) -> list[str]:
     """Every source entry fetched from the unreliable host."""
     found = []
     for m in SOURCE.finditer(pkgbuild):
-        for entry in re.findall(r"\S*" + re.escape(HOST) + r"\S*", m.group(2)):
-            found.append(entry.strip("\"'"))
+        for entry in m.group(2).split():
+            resolved = expand(entry, pkgbuild)
+            if HOST in resolved:
+                found.append(entry.strip("\"'"))
     return found
 
 

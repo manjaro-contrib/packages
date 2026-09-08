@@ -1,0 +1,16 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index b9e43d7..abe81a2 100644
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -11,7 +11,10 @@ license=('GPL-3.0-or-later')
+ makedepends=('git')
+ _commit=cc53d4bf0edb285de7131a3b3ca70fb2ea9cae29
+ options=('!strip')
+-source=("git+https://gitlab.manjaro.org/artwork/icon-themes/manjaro-icons.git#commit=${_commit}")
++# Cloned from our mirror: gitlab.manjaro.org clones fail often enough to
++# break builds outright, and the mirror is a faithful copy of the same
++# pinned commit. See release#5.
++source=("$pkgname::git+https://github.com/manjaro-contrib/artwork-icon-themes-manjaro-icons.git#commit=${_commit}")
+ sha256sums=('0c5cd57ec3eac7cc14c19b675acb507834b41569e1543183c5a9b7dea26d5457')
+ 
+ pkgver() {

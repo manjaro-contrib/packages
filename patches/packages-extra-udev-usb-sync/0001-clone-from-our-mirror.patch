@@ -1,0 +1,16 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index 81f3b56..64b0085 100644
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -9,7 +9,10 @@ license=('MIT')
+ depends=('hdparm' 'bc' 'udev')
+ makedepends=('git')
+ backup=("etc/${pkgname}/${pkgname}.conf")
+-source=("git+${url}.git#tag=${pkgver}")
++# Cloned from our mirror rather than ${url}: gitlab.manjaro.org clones
++# fail often enough to break builds outright. url stays as it is - it
++# states where the package comes from. See release#5.
++source=("$pkgname::git+https://github.com/manjaro-contrib/applications-udev-usb-sync.git#tag=${pkgver}")
+ sha256sums=('306b5326d33db9a74a7e3467812e4168f1cc29ade37b5fb6a080f4fdf5e86f23')
+ 
+ package() {

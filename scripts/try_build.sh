@@ -112,11 +112,11 @@ echo "## building for $ARCH in $IMAGE"
 # the prebuilt image already has base-devel and the builder account; any
 # other image has to be bootstrapped, or makepkg -s cannot install
 # makedepends and refuses to run as root
+# the body runs inside the container, so $key and friends must reach it
+# unexpanded - single quotes are the point here
+# shellcheck disable=SC2016
 build_cmd='
 set -e
-# a fresh container has no package databases, so makepkg -s cannot resolve
-# a single makedepend until they are synced. The prebuilt image is already
-# up to date, so this costs nothing there.
 # a fresh container has no package databases, so makepkg -s cannot resolve
 # a single makedepend until they are synced. base-devel is installed
 # unconditionally: manjarolinux/base carries makepkg and a builder user
@@ -128,6 +128,15 @@ echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
 cp -r /src /home/builder/pkg
 chown -R builder:builder /home/builder/pkg
 cd /home/builder/pkg
+# CI imports these before building, so a package whose source is signed
+# fails here and nowhere else without it - which makes a local build
+# unusable as evidence. Mirrors build-publish.yml.
+keys=$(sed -n "s/^[[:space:]]*validpgpkeys=(//p; /validpgpkeys=(/,/)/p" PKGBUILD |
+  grep -oE "[0-9A-Fa-f]{40}" || true)
+for key in $keys; do
+  sudo -u builder gpg --keyserver keyserver.ubuntu.com --recv-keys "$key" ||
+    echo "could not fetch $key; makepkg will report the failure"
+done
 sudo -u builder makepkg -s --noconfirm --nocheck
 ls -la ./*.pkg.tar.zst
 '

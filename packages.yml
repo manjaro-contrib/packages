@@ -84,6 +84,21 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  packages-extra-kitemmodels5:
+    maintainers: ["boredland"]
+  # patched here: cloned from our mirror, gitlab.manjaro.org fails often
+  # enough to break builds outright
+  packages-extra-manjaro-icons:
+    maintainers: ["boredland"]
+  packages-extra-nvidia-driver-assistant:
+    maintainers: ["boredland"]
+  # patched here: sourced gitlab.manjaro.org through ${url}
+  packages-extra-udev-usb-sync:
+    maintainers: ["boredland"]
+  packages-extra-yay:
+    maintainers: ["boredland"]
+  packages-extra-zsh-theme-powerlevel10k:
+    maintainers: ["boredland"]
   packages-extra-ckbcomp:
     maintainers: ["boredland"]
   packages-extra-manjaro-log-helper:
