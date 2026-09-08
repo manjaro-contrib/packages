@@ -1,0 +1,16 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index 53f9406..e89fd84 100644
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -23,7 +23,10 @@ makedepends=(
+   'git'
+ )
+ _commit=5c97abe3126b5108ce76738308e5e435bcce617e
+-source=("git+$url.git#commit=${_commit}")
++# Cloned from our mirror rather than $url: gitlab.manjaro.org clones fail
++# often enough to break builds outright. url stays as it is - it states
++# where the package comes from. See release#5.
++source=("${pkgbase%-git}::git+https://github.com/manjaro-contrib/tools-development-tools-manjaro-tools.git#commit=${_commit}")
+ sha256sums=('0510b6dbe7da37fcdc491d3a9c45c799b18fc4b42051cb029a6997056b0e3dd4')
+ 
+ pkgver() {

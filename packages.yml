@@ -166,6 +166,10 @@ packages:
 
   # maintained here; no external upstream
   # patched here: sourced gitlab.manjaro.org through $url. Splits into
+  # manjaro-tools-base-git, -pkg-git, -iso-git and -yaml-git
+  packages-extra-manjaro-tools-git:
+    maintainers: ["boredland"]
+  # patched here: sourced gitlab.manjaro.org through $url. Splits into
   # grub-theme-live-common, -manjaro and grub-theme-manjaro
   packages-extra-grub-theme-live:
     maintainers: ["boredland"]
