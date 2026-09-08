@@ -153,8 +153,10 @@ def main() -> int:
         log("GITHUB_TOKEN is required")
         return 1
 
-    repos = args.repo or sorted(load_catalog(args.config))
+    catalog = load_catalog(args.config)
+    repos = args.repo or sorted(catalog)
     problems = []
+    accepted_count = 0
     for repo in repos:
         try:
             pkgbuild = fetch_pkgbuild(args.org, repo, token)
@@ -177,16 +179,29 @@ def main() -> int:
             continue
         reads = clock_reads(body)
         floats = floats_with_upstream(body, pkgbuild)
+        # a package that is meant to track a moving tip says so here. The
+        # rebuild loop is real for it either way, so the reason has to name
+        # what makes that acceptable, not merely silence the check.
+        floating = (catalog.get(repo) or {}).get("floating")
+        accepted = bool(floats and floating)
+        if accepted:
+            floats = []
+            accepted_count += 1
         if reads or floats:
             problems.append((repo, reads, floats))
             log(f"{repo}: pkgver() {'reads the clock' if reads else 'floats with an unpinned source'}")
             for line in reads + floats:
                 log(f"    {line}")
+        elif accepted:
+            # not "ok": it does float, and the cost is real. Saying so every
+            # run keeps the exception a decision rather than a silence.
+            log(f"{repo}: pkgver() floats, accepted: {floating}")
         else:
             log(f"{repo}: pkgver() ok")
 
     if not problems:
-        log(f"checked {len(repos)} package(s), every pkgver() follows its source")
+        note = f", {accepted_count} floating by declaration" if accepted_count else ""
+        log(f"checked {len(repos)} package(s), no unintended version drift{note}")
         return 0
 
     log("")
@@ -205,6 +220,9 @@ def main() -> int:
     log("Fix it in the package repository by pinning pkgver to the upstream")
     log("release, or derive it from a pinned source revision - a VCS source")
     log("needs a #commit= or #tag= fragment for its version to mean anything.")
+    log("")
+    log("A package meant to track a moving tip records why in packages.yml:")
+    log("    floating: why this package must follow upstream")
     log("If the repository is a gitlab-sync mirror it is force-pushed, so a")
     log("downstream commit will not survive - that package cannot be built")
     log("here until upstream changes it.")

@@ -24,7 +24,7 @@ VERSION = re.compile(r"^[\w.+]+-[\w.+]+$")
 # pacman package names: no uppercase, no spaces, no leading dash
 PKGNAME = re.compile(r"^[a-z\d][a-z\d@._+-]*$")
 
-ENTRY_FIELDS = {"upstream", "maintainers", "repo", "override"}
+ENTRY_FIELDS = {"upstream", "maintainers", "repo", "override", "floating"}
 
 
 def log(msg: str) -> None:
@@ -83,9 +83,10 @@ def check_packages(path: pathlib.Path) -> list[str]:
         ):
             problems.append(f"{where}: upstream is not a url")
 
-        override = entry.get("override")
-        if override is not None and not str(override).strip():
-            problems.append(f"{where}: override is empty, so it explains nothing")
+        for field in ("override", "floating"):
+            reason = entry.get(field)
+            if reason is not None and not str(reason).strip():
+                problems.append(f"{where}: {field} is empty, so it explains nothing")
 
     return problems
 
