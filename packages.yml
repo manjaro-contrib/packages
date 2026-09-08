@@ -84,6 +84,10 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  packages-extra-libpamac:
+    maintainers: ["boredland"]
+  packages-extra-pamac-cli:
+    maintainers: ["boredland"]
   packages-extra-kitemmodels5:
     maintainers: ["boredland"]
   # patched here: cloned from our mirror, gitlab.manjaro.org fails often
