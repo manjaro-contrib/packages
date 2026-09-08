@@ -31,6 +31,50 @@
 
 packages:
   # tracked against the AUR
+  packages-multilib-lib32-glib-networking:
+    upstream: https://aur.archlinux.org/lib32-glib-networking.git
+    repo: multilib
+    maintainers: ["boredland"]
+  packages-multilib-lib32-libarchive:
+    upstream: https://aur.archlinux.org/lib32-libarchive.git
+    repo: multilib
+    maintainers: ["boredland"]
+  packages-multilib-lib32-libcap:
+    upstream: https://aur.archlinux.org/lib32-libcap.git
+    repo: multilib
+    maintainers: ["boredland"]
+  packages-multilib-lib32-libnsl:
+    upstream: https://aur.archlinux.org/lib32-libnsl.git
+    repo: multilib
+    maintainers: ["boredland"]
+  packages-multilib-lib32-libproxy:
+    upstream: https://aur.archlinux.org/lib32-libproxy.git
+    repo: multilib
+    maintainers: ["boredland"]
+  packages-multilib-lib32-libsoup3:
+    upstream: https://aur.archlinux.org/lib32-libsoup3.git
+    repo: multilib
+    maintainers: ["boredland"]
+  packages-multilib-lib32-mpg123:
+    upstream: https://aur.archlinux.org/lib32-mpg123.git
+    repo: multilib
+    maintainers: ["boredland"]
+  packages-multilib-lib32-pam:
+    upstream: https://aur.archlinux.org/lib32-pam.git
+    repo: multilib
+    maintainers: ["boredland"]
+  packages-multilib-lib32-polkit:
+    upstream: https://aur.archlinux.org/lib32-polkit.git
+    repo: multilib
+    maintainers: ["boredland"]
+  packages-multilib-lib32-libvpx:
+    upstream: https://aur.archlinux.org/lib32-libvpx.git
+    repo: multilib
+    maintainers: ["boredland"]
+  packages-multilib-lib32-sdl2:
+    upstream: https://aur.archlinux.org/lib32-sdl2.git
+    repo: multilib
+    maintainers: ["boredland"]
   packages-multilib-lib32-audit:
     upstream: https://aur.archlinux.org/lib32-audit.git
     repo: multilib
