@@ -7,6 +7,11 @@
 # override: why we ship a package arch already ships. Without this,
 #   check-upstream-dupes reports it as redundant, since an overlay package
 #   that duplicates the distribution only decides which one pacman picks.
+# Never source from gitlab.manjaro.org. Clones of that host fail often
+# enough to break builds outright, and a package sourced from it inherits
+# that on every build. Mirrors of those repositories live in this
+# organization; point the source at the mirror carrying the same revision,
+# and name the clone target after the package so prepare() still finds it.
 # patches: not a field. A directory patches/<repo-name>/ holding *.patch
 #   is applied to the checkout before makepkg, and to the PKGBUILD text
 #   when check_updates resolves the version. It exists for gitlab-sync
@@ -79,6 +84,11 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  # patched here: cloned from our mirror, gitlab.manjaro.org fails often
+  # enough to break builds outright
+  packages-core-pacman-mirrors:
+    repo: core
+    maintainers: ["boredland"]
   # patched here: cloned from our mirror, gitlab.manjaro.org fails often
   # enough to break builds outright
   packages-extra-mhwd:

@@ -1,0 +1,16 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index a6408e4..434337c 100755
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -31,7 +31,10 @@ optdepends=(
+ provides=("pacman-mirrorlist=$pkgver-$pkgrel")
+ conflicts=('pacman-mirrorlist' 'reflector')
+ backup=("etc/$pkgname.conf")
+-source=("git+https://gitlab.manjaro.org/applications/pacman-mirrors.git#tag=v${pkgver}"
++# Cloned from our mirror: gitlab.manjaro.org clones fail often enough to
++# break builds outright, and the mirror is a faithful copy of the same
++# revision. See release#5, which made the same switch for the ISO builds.
++source=("$pkgname::git+https://github.com/manjaro-contrib/applications-pacman-mirrors.git#tag=v${pkgver}"
+         "$pkgname-install.script"
+         "$pkgname-upgrade.script"
+         "$pkgname-install.hook"
