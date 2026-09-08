@@ -1,0 +1,30 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index 15371e7..8e09e8d 100644
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -1,10 +1,15 @@
++# Pinned to a commit: pkgver() counts commits on the checkout, so an
++# unpinned source made the declared version and the built version
++# disagree - the builder rebuilt this every run and each rebuild
++# overwrote the published package with a byte-different one.
++# Upstream last moved in 2021; bump the commit to take new work.
+ # Maintainer:  Callum Parsey <neoninteger@protonmail.com>
+ # Contributor: Sefa Eyeoglu <contact@scrumplex.net>
+ # Contributor: Kazutoshi Noguchi <noguchi.kazutosi+lGlcOenS [at] gmail [dot] com>
+ # Contributor: Marco Kundt <mrckndt [at] gmail [dot] com>
+ 
+ pkgname=gtk3-nocsd
+-pkgver=r74.c153438
++pkgver=r82.512c2bd
+ pkgrel=2
+ pkgdesc="A hack to disable gtk+ 3 client side decoration"
+ arch=("i686" "x86_64" "aarch64")
+@@ -22,7 +27,7 @@ makedepends=(
+ )
+ 
+ source=(
+-    "git+https://github.com/ZaWertun/gtk3-nocsd.git"
++    "git+https://github.com/ZaWertun/gtk3-nocsd.git#commit=512c2bd866d71def6ffd4d85ca98ae12fe989c62"
+     "30-gtk3-nocsd.sh"
+ )
+ 

@@ -12,6 +12,12 @@
 #   when check_updates resolves the version. It exists for gitlab-sync
 #   mirrors, which are force-pushed, so a fix committed to the package
 #   repository is overwritten within two hours.
+# floating: why a package must track a moving branch tip rather than a
+#   pinned revision. check-pkgver otherwise rejects a pkgver() reading an
+#   unpinned VCS source, because the version it declares and the version
+#   makepkg resolves disagree - the builder then rebuilds it every run and
+#   each rebuild replaces the published object with a byte-different one.
+#   Declaring this accepts that cost; it does not avoid it.
 # repo: which pacman repository the package is published into, defaulting
 #   to extra. Nothing in a package declares this - membership is simply
 #   which database it appears in - so it has to be stated here. core is
@@ -117,6 +123,8 @@ packages:
   manjaro-sway-settings:
     maintainers: ["boredland"]
   manjaro-sway-settings-git:
+    floating: a -git package exists to follow the branch tip; pinning it
+      would duplicate manjaro-sway-settings, which tracks releases
     maintainers: ["boredland"]
   sway-services:
     maintainers: ["boredland"]

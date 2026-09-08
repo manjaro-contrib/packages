@@ -12,9 +12,18 @@ has it too and cannot be fixed the same way - gitlab-sync force-pushes that
 mirror, so a downstream commit is overwritten within two hours. That makes
 this a property to detect before adding a package, not after.
 
+A pkgver() counting commits on an *unpinned* VCS source fails the same way
+with a different input. gtk3-nocsd declared `r74.c153438` while makepkg
+resolved `r82.512c2bd` from live HEAD, so check_updates looked for an
+artifact no build ever produces and rebuilt it every run. Worse than waste:
+each rebuild of the same version overwrites the published object with a
+byte-different one while the database still describes the old, leaving
+sizes that disagree.
+
 Deriving a version from a *pinned* source is fine and common: the commit
 date of a `#commit=` revision moves only when someone bumps the revision,
-which is the intended behaviour. Only a clock reading is rejected.
+which is the intended behaviour. Only versions that do not follow from the
+repository contents are rejected.
 """
 
 import argparse
@@ -46,6 +55,13 @@ CLOCK = re.compile(
 PRINTF_CLOCK = re.compile(r"%\(\s*%[YmdHMS][^)]*\)T")
 # EPOCHSECONDS and SECONDS are bash's own clocks
 SHELL_CLOCK = re.compile(r"\$\{?(EPOCHSECONDS|EPOCHREALTIME)\b")
+
+# a pkgver() interrogating the checkout it was handed
+VCS_READ = re.compile(r"\b(git|hg|svn|bzr)\s+\S")
+# makepkg's vcs source syntax, and the fragments that fix it to a revision.
+# `#branch=` and `#branch` alone track a moving tip, so they do not pin.
+VCS_SOURCE = re.compile(r"\b(git|hg|svn|bzr)\+[^\s\"\')]+")
+PINNED_FRAGMENT = re.compile(r"#(commit|tag|revision)=")
 
 
 def log(msg: str) -> None:
@@ -82,6 +98,38 @@ def clock_reads(body: str) -> list[str]:
     return found
 
 
+def unpinned_sources(pkgbuild: str) -> list[str]:
+    """Every VCS source in the PKGBUILD not fixed to a revision."""
+    found = []
+    for m in VCS_SOURCE.finditer(pkgbuild):
+        url = m.group(0)
+        # the fragment follows the url inside the same source entry
+        tail = pkgbuild[m.end() : pkgbuild.find("\n", m.end())]
+        if not PINNED_FRAGMENT.search(url + tail):
+            found.append(url)
+    return found
+
+
+def floats_with_upstream(body: str, pkgbuild: str) -> list[str]:
+    """pkgver() lines reading a VCS checkout that no revision pins.
+
+    Empty when every VCS source is pinned: the version then moves only
+    when someone bumps the revision, which is a source change like any
+    other.
+    """
+    unpinned = unpinned_sources(pkgbuild)
+    if not unpinned:
+        return []
+    found = []
+    for line in body.splitlines():
+        stripped = line.split("#", 1)[0].strip()
+        if stripped and VCS_READ.search(stripped):
+            found.append(stripped)
+    if not found:
+        return []
+    return found + [f"unpinned source: {u}" for u in unpinned]
+
+
 def fetch_pkgbuild(org: str, repo: str, token: str) -> str | None:
     status, data = api("GET", f"/repos/{org}/{repo}/contents/PKGBUILD", token)
     if status == 404:
@@ -105,8 +153,10 @@ def main() -> int:
         log("GITHUB_TOKEN is required")
         return 1
 
-    repos = args.repo or sorted(load_catalog(args.config))
+    catalog = load_catalog(args.config)
+    repos = args.repo or sorted(catalog)
     problems = []
+    accepted_count = 0
     for repo in repos:
         try:
             pkgbuild = fetch_pkgbuild(args.org, repo, token)
@@ -128,30 +178,52 @@ def main() -> int:
         if body is None:
             continue
         reads = clock_reads(body)
-        if reads:
-            problems.append((repo, reads))
-            log(f"{repo}: pkgver() reads the clock")
-            for line in reads:
+        floats = floats_with_upstream(body, pkgbuild)
+        # a package that is meant to track a moving tip says so here. The
+        # rebuild loop is real for it either way, so the reason has to name
+        # what makes that acceptable, not merely silence the check.
+        floating = (catalog.get(repo) or {}).get("floating")
+        accepted = bool(floats and floating)
+        if accepted:
+            floats = []
+            accepted_count += 1
+        if reads or floats:
+            problems.append((repo, reads, floats))
+            log(f"{repo}: pkgver() {'reads the clock' if reads else 'floats with an unpinned source'}")
+            for line in reads + floats:
                 log(f"    {line}")
+        elif accepted:
+            # not "ok": it does float, and the cost is real. Saying so every
+            # run keeps the exception a decision rather than a silence.
+            log(f"{repo}: pkgver() floats, accepted: {floating}")
         else:
             log(f"{repo}: pkgver() ok")
 
     if not problems:
-        log(f"checked {len(repos)} package(s), no clock-based pkgver()")
+        note = f", {accepted_count} floating by declaration" if accepted_count else ""
+        log(f"checked {len(repos)} package(s), no unintended version drift{note}")
         return 0
 
     log("")
-    log(f"{len(problems)} package(s) version themselves by the clock:")
-    for repo, _ in problems:
-        log(f"  {repo}")
+    log(f"{len(problems)} package(s) version themselves by something other than")
+    log("their source:")
+    for repo, reads, _ in problems:
+        log(f"  {repo} ({'clock' if reads else 'unpinned source'})")
     log("")
-    log("A pkgver() reading the current time produces a new version every day")
-    log("whether or not the source changed, so check_updates rebuilds and")
-    log("republishes the package daily and forever.")
+    log("A version that does not follow from the repository contents makes")
+    log("check_updates look for an artifact the build never produces, so the")
+    log("package is rebuilt every run and republished forever. Each rebuild")
+    log("overwrites the published object with a byte-different one while the")
+    log("database still describes the old, so the repository stops matching")
+    log("itself.")
     log("")
     log("Fix it in the package repository by pinning pkgver to the upstream")
-    log("release, or derive it from a pinned source revision. If the")
-    log("repository is a gitlab-sync mirror it is force-pushed, so a")
+    log("release, or derive it from a pinned source revision - a VCS source")
+    log("needs a #commit= or #tag= fragment for its version to mean anything.")
+    log("")
+    log("A package meant to track a moving tip records why in packages.yml:")
+    log("    floating: why this package must follow upstream")
+    log("If the repository is a gitlab-sync mirror it is force-pushed, so a")
     log("downstream commit will not survive - that package cannot be built")
     log("here until upstream changes it.")
     return 1
