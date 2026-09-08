@@ -36,13 +36,20 @@ RUN install -dm700 /root/.gnupg
 # Arch Linux ARM tracks Arch closely - gcc 16.1.1, glibc 2.43, rust 1.98.1,
 # the same rust Manjaro x86 ships - so aarch64 builds there instead.
 FROM ${BUILDER_BASE} AS builder
-# --disable-sandbox: Arch Linux ARM's pacman.conf sets DownloadUser = alpm,
-# and pacman then applies a Landlock ruleset that buildkit's sandbox
-# refuses - "restricting filesystem access failed ... Operation not
-# permitted", then "switching to sandbox user 'alpm' failed". Manjaro's
-# base sets no DownloadUser, which is why only the arm leg hit it. The
-# download sandbox buys nothing in a throwaway image build.
-RUN pacman -Syu --noconfirm --needed --disable-sandbox \
+# Arch Linux ARM's pacman.conf sets DownloadUser = alpm; Manjaro's sets
+# none. pacman then drops to that user behind a Landlock ruleset, which
+# neither buildkit nor the job container will let it apply:
+#
+#   error: restricting filesystem access failed because the Landlock
+#     ruleset could not be applied: Operation not permitted
+#   error: switching to sandbox user 'alpm' failed!
+#
+# Dropping the setting here fixes the image build and every pacman and
+# makepkg call in the jobs that use the image, which --disable-sandbox on
+# this one transaction did not. It costs nothing: the container is
+# unprivileged and thrown away, and packages are still signature-checked.
+RUN sed -i 's/^DownloadUser/#DownloadUser/' /etc/pacman.conf && \
+    pacman -Syu --noconfirm --needed \
       base-devel git sudo python gnupg curl && \
     pacman -Scc --noconfirm && \
     (id -u builder >/dev/null 2>&1 || useradd -m builder) && \
