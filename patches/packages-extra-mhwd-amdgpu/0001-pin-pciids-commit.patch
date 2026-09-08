@@ -1,0 +1,47 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index fc67b80..3a0feec 100644
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -1,16 +1,28 @@
+ # Maintainer: Philip Müller <philm[at]manjaro[dog]org>
+ # Contributor: Fabian Bornschein <plusfabi[at]gmail[dog]com>
+ 
++# Pinned to a commit rather than master. pciids updates continuously, so a
++# checksum against master goes stale on its own and the package stops
++# building for everyone - which is the state this was found in.
++#
++# pkgver carries the pciids date because the device ids *are* the package:
++# without it two builds months apart both claim 19.1.0-1 while shipping
++# different hardware support, and nothing downstream can tell them apart.
++# Bumping _pciids_commit moves the version, the checksum and the content
++# together.
++_pciids_commit=ebff0f14735f92971e64c91b9dec8ba47e5baed4
++_pciids_date=20260907
++
+ pkgname=('mhwd-amdgpu')
+-pkgver=19.1.0
++pkgver=19.1.0+pciids.${_pciids_date}
+ pkgrel=1
+ 
+ pkgdesc="MHWD module-ids for amdgpu"
+ arch=('any')
+ url="http://xorg.freedesktop.org/"
+ license=('custom')
+-source=("https://raw.githubusercontent.com/pciutils/pciids/master/pci.ids")
+-md5sums=('82cb2772c4146fe38782895d95002009')
++source=("pci.ids::https://raw.githubusercontent.com/pciutils/pciids/${_pciids_commit}/pci.ids")
++md5sums=('994be5904978918e3abd81f63de32bef')
+ 
+ _IDFILE="amdgpu.ids"
+ _IDFILE_EXP="amdgpu_exp.ids"
+@@ -69,7 +81,9 @@ prepare() {
+ 
+ 
+     # Check for file
+-    if [ ! -f "${srcdir}/pci.ids" ] || ! grep "List of PCI ID's" "${srcdir}/pci.ids" > /dev/null
++    # upstream dropped the apostrophe from "List of PCI ID's" at some point,
++    # so the original literal matches no current pci.ids
++    if [ ! -f "${srcdir}/pci.ids" ] || ! grep -q "List of PCI IDs\?'\?s\?" "${srcdir}/pci.ids"
+         then
+             echo "Missing or wrong source PCIID-file"
+             exit 1
