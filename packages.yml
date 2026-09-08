@@ -73,6 +73,14 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  # patched here: cloned from our mirror, gitlab.manjaro.org fails often
+  # enough to break builds outright
+  packages-extra-mhwd:
+    repo: extra
+    maintainers: ["boredland"]
+  packages-extra-mhwd-db:
+    repo: extra
+    maintainers: ["boredland"]
   # patched here: adds our build server key to the keyring upstream ships,
   # so a client trusts what we sign without importing one by hand
   packages-core-manjaro-keyring:

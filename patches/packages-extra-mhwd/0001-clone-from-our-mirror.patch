@@ -1,0 +1,17 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index 49671a7..7e1d669 100644
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -25,7 +25,11 @@ optdepends=(
+ )
+ provides=('libmhwd.so')
+ install="$pkgname.install"
+-source=("git+https://gitlab.manjaro.org/applications/mhwd.git#commit=6ddcc607")
++# cloned from our mirror rather than gitlab.manjaro.org: that host has
++# been unreachable often enough to fail builds outright, and the mirror
++# is a faithful copy carrying the same pinned commit. See release#5,
++# which made the same switch for the ISO builds.
++source=("mhwd::git+https://github.com/manjaro-contrib/applications-mhwd.git#commit=6ddcc607")
+ sha256sums=('5450b471ae6bb6a716b4a29cdc8e68014f0be585338de95d05a1bcf1a7c08a92')
+ 
+ build() {
