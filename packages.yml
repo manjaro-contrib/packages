@@ -84,6 +84,20 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  packages-extra-ckbcomp:
+    maintainers: ["boredland"]
+  packages-extra-manjaro-log-helper:
+    maintainers: ["boredland"]
+  packages-extra-manjaro-zsh-config:
+    maintainers: ["boredland"]
+  packages-extra-mkinitcpio-openswap:
+    maintainers: ["boredland"]
+  packages-extra-python-npyscreen:
+    maintainers: ["boredland"]
+  packages-extra-timeshift-autosnap-manjaro:
+    maintainers: ["boredland"]
+  packages-extra-ttf-meslo-nerd-font-powerlevel10k:
+    maintainers: ["boredland"]
   # patched here: cloned from our mirror, gitlab.manjaro.org fails often
   # enough to break builds outright
   packages-core-pacman-mirrors:
