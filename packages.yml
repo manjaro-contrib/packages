@@ -84,6 +84,10 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  # patched here: fetched from our mirror, gitlab.manjaro.org fails often
+  # enough to break builds outright
+  packages-extra-calamares:
+    maintainers: ["boredland"]
   packages-extra-libpamac:
     maintainers: ["boredland"]
   packages-extra-pamac-cli:

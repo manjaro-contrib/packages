@@ -1,0 +1,25 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index d9d64fc..3fadb7e 100644
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -50,14 +50,17 @@ backup=(
+   'usr/share/calamares/modules/initcpio.conf'
+   'usr/share/calamares/modules/unpackfs.conf'
+ )
++# Fetched from our mirror rather than \$url: gitlab.manjaro.org fails
++# often enough to break builds outright. url stays as it is - it states
++# where the package comes from. Same pinned commit either way.
+ source=(
+ #  "$pkgname-$pkgver.tar.gz::$url/-/archive/v$pkgver/calamares-v$pkgver.tar.gz"
+-  "$pkgname-$pkgver-$pkgrel.tar.gz::$url/-/archive/$_commit/$pkgname-$_commit.tar.gz"
++  "$pkgname-$pkgver-$pkgrel.tar.gz::https://github.com/manjaro-contrib/applications-calamares/archive/$_commit.tar.gz"
+ )
+-sha256sums=('dc2d8c616e08fc1744cdf51d286983bd34949760311c2987746f857351e6fc8d')
++sha256sums=('de49338b8bd25e56319a21a83bd8fad749cc7c7833c2a96dcd6a456f3b5fd915')
+ 
+ prepare() {
+-  mv ${srcdir}/calamares-${_commit} ${srcdir}/calamares-${pkgver}
++  mv ${srcdir}/applications-calamares-${_commit} ${srcdir}/calamares-${pkgver}
+ #  mv ${srcdir}/calamares-v${pkgver} ${srcdir}/calamares-${pkgver}
+   cd ${srcdir}/calamares-${pkgver}
+ 
