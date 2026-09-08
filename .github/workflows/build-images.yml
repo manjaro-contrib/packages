@@ -23,7 +23,10 @@ jobs:
     strategy:
       matrix:
         target: [repo, builder]
-        arch: [x86_64, aarch64]
+        # aarch64 is not built: build-publish.yml publishes x86_64 only, so
+        # an arm image would have no consumer. See the ARCHES note there and
+        # #50. Adding it back here and there re-enables the pair.
+        arch: [x86_64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -59,10 +62,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - name: join the per-arch tags into one manifest
+      - name: point :latest at the architectures that were built
+        # jobs pull :latest and expect their own architecture. With one
+        # architecture this is a rename rather than a join, but it still has
+        # to happen: nothing else creates :latest.
         env:
           IMAGE: ghcr.io/${{ github.repository }}/${{ matrix.target }}
         run: |
-          docker buildx imagetools create -t "$IMAGE:latest" \
-            "$IMAGE:x86_64" "$IMAGE:aarch64"
+          docker buildx imagetools create -t "$IMAGE:latest" "$IMAGE:x86_64"
           docker buildx imagetools inspect "$IMAGE:latest"

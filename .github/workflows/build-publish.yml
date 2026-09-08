@@ -14,6 +14,15 @@ on:
 env:
   REPO_URL: ${{ vars.REPO_URL }}
   BRANCH: unstable
+  # Architectures to build and publish. aarch64 is off: Manjaro's ARM
+  # branches carry a toolchain years behind the x86 one - arm-stable is on
+  # gcc 12.1.0, glibc 2.35 and rust 1.76 against 16.2.1, 2.44 and 1.98.1 -
+  # and four packages could not build against it at all (#50). Building on
+  # Arch Linux ARM instead does fix the toolchain, but its repositories are
+  # not Manjaro's, so the result is packages linked against a different
+  # glibc than the systems that would install them. Re-enable by adding
+  # aarch64 back here; #50 has the detail.
+  ARCHES: x86_64
 
 jobs:
   check:
@@ -23,6 +32,8 @@ jobs:
       # so each gets its own list
       pending: ${{ steps.check.outputs.pending }}
       has_pending: ${{ steps.check.outputs.has_pending }}
+      # a matrix cannot read env, so hand the architecture list on
+      arches: ${{ steps.check.outputs.arches }}
       more_waves: ${{ steps.check.outputs.more_waves }}
     steps:
       - name: mint an app token
@@ -41,7 +52,7 @@ jobs:
         run: |
           pending='[]'
           more=false
-          for arch in x86_64 aarch64; do
+          for arch in $ARCHES; do
             args=(--org "${{ github.repository_owner }}" --repo-url "$REPO_URL" \
                   --branch "$BRANCH" --arch "$arch")
             [ -n "$ONLY_REPO" ] && args+=(--only-repo "$ONLY_REPO")
@@ -56,6 +67,7 @@ jobs:
             echo "pending=$pending"
             echo "has_pending=$(jq 'length > 0' <<<"$pending")"
             echo "more_waves=$more"
+            echo "arches=$(jq -c -n '$ARGS.positional' --args $ARCHES)"
           } >> "$GITHUB_OUTPUT"
 
   build:
@@ -196,7 +208,7 @@ jobs:
       # one at a time: both legs rewrite the shared state file
       max-parallel: 1
       matrix:
-        arch: [x86_64, aarch64]
+        arch: ${{ fromJSON(needs.check.outputs.arches) }}
     # needs.build.result is 'failure' if ANY matrix leg failed; run anyway so
     # partial successes still publish. publish.py fails if nothing was built.
     if: always() && needs.check.outputs.has_pending == 'true' && needs.build.result != 'cancelled' && needs.build.result != 'skipped'

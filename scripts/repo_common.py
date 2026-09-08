@@ -8,6 +8,12 @@ DB_SUFFIXES = [".db", ".db.tar.gz", ".files", ".files.tar.gz"]
 
 # every architecture published. "any" packages are not listed: they
 # live in each arch prefix rather than one of their own.
+#
+# aarch64 is still here although build-publish.yml no longer builds for it:
+# the packages built before it was switched off are still in the bucket and
+# still served, so check_repo, rebuild_db and repo_remove have to keep
+# seeing them. Dropping it here would leave that tree unverifiable and
+# unremovable rather than merely frozen.
 ARCHES = ("x86_64", "aarch64")
 
 def db_name_for(repo: str) -> str:
