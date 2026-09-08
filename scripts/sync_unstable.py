@@ -25,8 +25,7 @@ import sys
 import tempfile
 
 from botocore.exceptions import ClientError
-from catalog import REPOS
-from catalog import load as load_catalog
+from catalog import REPOS, listed_package_names
 from repo_common import (
     ARCHES,
     DB_SUFFIXES,
@@ -132,7 +131,10 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    allowed = set(load_catalog(args.config))
+    # package names, not repository keys: packages-core-pacman-mirrors
+    # builds pacman-mirrors, and comparing published filenames against the
+    # keys withdrew every package whose repository is not named after it
+    allowed = listed_package_names(args.config)
     if not allowed:
         # an empty list would withdraw everything; a truncated config is
         # far likelier than a deliberate wipe

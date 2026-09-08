@@ -37,6 +37,23 @@ def load(config: str = CONFIG) -> dict[str, dict]:
     return {name: (entry or {}) for name, entry in packages.items()}
 
 
+def listed_package_names(config: str = CONFIG) -> set[str]:
+    """Every package name packages.yml authorises, not repository names.
+
+    The two differ: packages-core-pacman-mirrors builds pacman-mirrors.
+    sync_unstable compares published filenames against this, so using the
+    repository keys directly withdrew every package whose repository is
+    not named after it - which is what emptied `core` in #66.
+    """
+    names = set()
+    for key in load(config):
+        names.add(key)
+        for group in MIRROR_GROUPS:
+            if key.startswith(f"{group}-"):
+                names.add(key[len(group) + 1 :])
+    return names
+
+
 def repo_for_package(name: str, config: str = CONFIG) -> str:
     """The repository a built package belongs in, found by package name.
 
