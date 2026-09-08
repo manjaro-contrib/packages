@@ -1,0 +1,16 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index 99d33c1..e614966 100644
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -14,7 +14,10 @@ url="https://gitlab.manjaro.org/artwork/branding/grub-theme"
+ license=('GPL-3.0-or-later')
+ makedepends=('git')
+ _commit=e3664f8bd83e35ad6db1e53963bffb9719bd4760
+-source=("git+$url.git#commit=$_commit")
++# Cloned from our mirror rather than $url: gitlab.manjaro.org clones fail
++# often enough to break builds outright. url stays as it is - it states
++# where the package comes from. See release#5.
++source=("grub-theme::git+https://github.com/manjaro-contrib/artwork-branding-grub-theme.git#commit=$_commit")
+ sha256sums=('fa11abadc31868c294ab9537965cbdc25b462d63f22cc051046d23b69cbd5418')
+ 
+ package_grub-theme-live-common() {

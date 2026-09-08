@@ -165,6 +165,10 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  # patched here: sourced gitlab.manjaro.org through $url. Splits into
+  # grub-theme-live-common, -manjaro and grub-theme-manjaro
+  packages-extra-grub-theme-live:
+    maintainers: ["boredland"]
   # patched here: cloned from our mirror, gitlab.manjaro.org fails often
   # enough to break builds outright. Splits into manjaro-live-base,
   # -skel and -systemd
