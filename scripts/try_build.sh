@@ -138,7 +138,7 @@ cd /home/builder/pkg
 # CI imports these before building, so a package whose source is signed
 # fails here and nowhere else without it - which makes a local build
 # unusable as evidence. Mirrors build-publish.yml.
-keys=$(sed -n "s/^[[:space:]]*validpgpkeys=(//p; /validpgpkeys=(/,/)/p" PKGBUILD |
+keys=$(sed -n "/validpgpkeys=(/,/)/p" PKGBUILD |
   grep -oE "[0-9A-Fa-f]{40}" || true)
 for key in $keys; do
   sudo -u builder gpg --keyserver keyserver.ubuntu.com --recv-keys "$key" ||

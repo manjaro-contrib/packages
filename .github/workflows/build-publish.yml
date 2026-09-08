@@ -182,7 +182,7 @@ jobs:
         if: ${{ !matrix.package.reusable }}
         run: |
           chown -R builder:builder pkg
-          keys=$(sed -n "s/^[[:space:]]*validpgpkeys=(//p; /validpgpkeys=(/,/)/p" pkg/PKGBUILD |
+          keys=$(sed -n "/validpgpkeys=(/,/)/p" pkg/PKGBUILD |
             grep -oE "[0-9A-Fa-f]{40}" || true)
           for key in $keys; do
             sudo -u builder gpg --keyserver keyserver.ubuntu.com --recv-keys "$key" ||
