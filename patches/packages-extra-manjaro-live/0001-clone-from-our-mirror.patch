@@ -1,0 +1,16 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index a1fa21a..dc2147f 100644
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -18,7 +18,10 @@ url="https://gitlab.manjaro.org/tools/development-tools/manjaro-tools-livecd"
+ license=('GPL-3.0-or-later')
+ makedepends=('git')
+ _commit=d57b80a50fa8ecb901754074a226166769f30e54
+-source=("git+https://gitlab.manjaro.org/tools/development-tools/manjaro-tools-livecd.git#commit=${_commit}")
++# Cloned from our mirror rather than gitlab.manjaro.org, whose clones fail
++# often enough to break builds outright. url stays as it is - it states
++# where the package comes from. See release#5.
++source=("manjaro-tools-livecd::git+https://github.com/manjaro-contrib/tools-development-tools-manjaro-tools-livecd.git#commit=${_commit}")
+ sha256sums=('cc6edcf3d6275e9647b0bd93d49cfa496dbd8c8b626bcbb09651b39fb89592d5')
+ 
+ pkgver() {

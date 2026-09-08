@@ -165,6 +165,14 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  # patched here: cloned from our mirror, gitlab.manjaro.org fails often
+  # enough to break builds outright. Splits into manjaro-live-base,
+  # -skel and -systemd
+  packages-extra-manjaro-live:
+    maintainers: ["boredland"]
+  # splits into pamac-gtk and pamac-gnome-integration
+  packages-extra-pamac:
+    maintainers: ["boredland"]
   packages-core-linux61:
     repo: core
     maintainers: ["boredland"]
