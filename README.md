@@ -273,6 +273,28 @@ Rootless Docker cannot do this - the install runs inside a container and
 never reaches the host - so a foreign architecture there has to go
 through CI, which builds it natively anyway.
 
+## Patching a mirrored package
+
+A `gitlab-sync` mirror is force-pushed from gitlab.manjaro.org, so a fix
+committed to the package repository is overwritten within two hours. Put
+it in `patches/<repo-name>/` instead:
+
+```
+patches/packages-core-manjaro-system/0001-pin-pkgver.patch
+```
+
+Every `*.patch` in that directory is applied in filename order, both to
+the checkout before `makepkg` and to the PKGBUILD text when
+`check_updates` resolves which version is missing. Both matter: if only
+the build patched, discovery would ask for a version the build never
+produces, and the package would rebuild forever.
+
+A patch that no longer applies fails the run rather than being skipped -
+upstream having changed underneath it is a decision to make, not a
+condition to ignore.
+
+Generate one with `git diff` in a checkout of the package repository.
+
 ## Operating
 
 Configuration lives in GitHub. Variables: `REPO_URL`, `GPG_KEYID`,

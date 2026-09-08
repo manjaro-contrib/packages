@@ -15,12 +15,14 @@ import argparse
 import base64
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
 
+import patches
 from catalog import load as load_catalog
 from pkgbuild import fields as parse_fields
 from pkgbuild import strip_constraint
@@ -218,6 +220,16 @@ def main() -> int:
         if content is None:
             log("  no PKGBUILD on default branch, skipping")
             continue
+        # the build applies the same patches, so the version resolved here
+        # has to be the patched one or the two disagree about what is missing
+        try:
+            patched = patches.apply_to_text(repo["name"], "PKGBUILD", content)
+        except subprocess.CalledProcessError:
+            log(f"  patch does not apply, skipping: {patches.PATCH_DIR}/{repo['name']}")
+            continue
+        if patched != content:
+            log(f"  applied {len(patches.patch_paths(repo['name']))} local patch(es)")
+            content = patched
         with tempfile.TemporaryDirectory() as workdir:
             fields = parse_pkgbuild(content, workdir)
         if fields is None:

@@ -21,11 +21,14 @@ import argparse
 import base64
 import os
 import re
+import subprocess
 import sys
 import urllib.error
 
 from catalog import load as load_catalog
 from gh_api import api
+
+import patches
 
 # a shell call whose value comes from the wall clock. `date -r file` and
 # `git show --date=` read a file and a commit, so they are not included.
@@ -112,6 +115,14 @@ def main() -> int:
             return 1
         if pkgbuild is None:
             log(f"{repo}: no PKGBUILD on the default branch, skipping")
+            continue
+        # a local patch is what fixes this for a mirror we cannot commit
+        # into, so judge what will actually be built
+        try:
+            pkgbuild = patches.apply_to_text(repo, "PKGBUILD", pkgbuild)
+        except subprocess.CalledProcessError:
+            log(f"{repo}: local patches do not apply")
+            problems.append((repo, ["patches do not apply"]))
             continue
         body = pkgver_body(pkgbuild)
         if body is None:
