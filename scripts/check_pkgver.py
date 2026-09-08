@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+"""Fail on a pkgver() that changes with the clock rather than the source.
+
+check_updates decides what to build by comparing the version a PKGBUILD
+declares against the artifacts on R2. A pkgver() returning `date +%Y%m%d`
+makes that comparison meaningless: the version differs every day whether
+or not anything changed, so every package with one is rebuilt daily,
+forever, and republished under a name nothing asked for.
+
+manjaro-keyring had exactly this and we fixed it downstream. manjaro-system
+has it too and cannot be fixed the same way - gitlab-sync force-pushes that
+mirror, so a downstream commit is overwritten within two hours. That makes
+this a property to detect before adding a package, not after.
+
+Deriving a version from a *pinned* source is fine and common: the commit
+date of a `#commit=` revision moves only when someone bumps the revision,
+which is the intended behaviour. Only a clock reading is rejected.
+"""
+
+import argparse
+import base64
+import os
+import re
+import sys
+import urllib.error
+
+from catalog import load as load_catalog
+from gh_api import api
+
+# a shell call whose value comes from the wall clock. `date -r file` and
+# `git show --date=` read a file and a commit, so they are not included.
+CLOCK = re.compile(
+    r"""
+    (?<!-r\s)                 # date -r FILE reads the file's mtime
+    \bdate\b                  # the date builtin
+    (?!\s+-r\b)               # not `date -r`
+    [^\n|)]*                  # its arguments
+    (\+%|--date=|--rfc)       # producing a formatted stamp
+    """,
+    re.VERBOSE,
+)
+# printf '%(%Y%m%d)T' is the same reading without calling date
+PRINTF_CLOCK = re.compile(r"%\(\s*%[YmdHMS][^)]*\)T")
+# EPOCHSECONDS and SECONDS are bash's own clocks
+SHELL_CLOCK = re.compile(r"\$\{?(EPOCHSECONDS|EPOCHREALTIME)\b")
+
+
+def log(msg: str) -> None:
+    print(msg, file=sys.stderr, flush=True)
+
+
+def pkgver_body(pkgbuild: str) -> str | None:
+    """The body of pkgver(), or None if the PKGBUILD declares no function."""
+    m = re.search(r"^\s*pkgver\s*\(\s*\)\s*\{", pkgbuild, re.MULTILINE)
+    if not m:
+        return None
+    depth, i = 0, m.end() - 1
+    for j in range(i, len(pkgbuild)):
+        if pkgbuild[j] == "{":
+            depth += 1
+        elif pkgbuild[j] == "}":
+            depth -= 1
+            if depth == 0:
+                return pkgbuild[i + 1 : j]
+    return pkgbuild[i + 1 :]
+
+
+def clock_reads(body: str) -> list[str]:
+    """Every line of a pkgver() body that reads the current time."""
+    found = []
+    for line in body.splitlines():
+        stripped = line.split("#", 1)[0].strip()
+        if not stripped:
+            continue
+        if CLOCK.search(stripped) or PRINTF_CLOCK.search(stripped) or SHELL_CLOCK.search(
+            stripped
+        ):
+            found.append(stripped)
+    return found
+
+
+def fetch_pkgbuild(org: str, repo: str, token: str) -> str | None:
+    status, data = api("GET", f"/repos/{org}/{repo}/contents/PKGBUILD", token)
+    if status == 404:
+        return None
+    if status != 200:
+        raise RuntimeError(f"{repo}: fetching PKGBUILD failed ({status}): {data}")
+    return base64.b64decode(data["content"]).decode(errors="replace")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--org", required=True, help="GitHub organization")
+    parser.add_argument("--config", default="packages.yml")
+    parser.add_argument(
+        "--repo", action="append", help="check one repository; repeatable"
+    )
+    args = parser.parse_args()
+
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        log("GITHUB_TOKEN is required")
+        return 1
+
+    repos = args.repo or sorted(load_catalog(args.config))
+    problems = []
+    for repo in repos:
+        try:
+            pkgbuild = fetch_pkgbuild(args.org, repo, token)
+        except (urllib.error.HTTPError, RuntimeError) as e:
+            log(f"{repo}: {e}")
+            return 1
+        if pkgbuild is None:
+            log(f"{repo}: no PKGBUILD on the default branch, skipping")
+            continue
+        body = pkgver_body(pkgbuild)
+        if body is None:
+            continue
+        reads = clock_reads(body)
+        if reads:
+            problems.append((repo, reads))
+            log(f"{repo}: pkgver() reads the clock")
+            for line in reads:
+                log(f"    {line}")
+        else:
+            log(f"{repo}: pkgver() ok")
+
+    if not problems:
+        log(f"checked {len(repos)} package(s), no clock-based pkgver()")
+        return 0
+
+    log("")
+    log(f"{len(problems)} package(s) version themselves by the clock:")
+    for repo, _ in problems:
+        log(f"  {repo}")
+    log("")
+    log("A pkgver() reading the current time produces a new version every day")
+    log("whether or not the source changed, so check_updates rebuilds and")
+    log("republishes the package daily and forever.")
+    log("")
+    log("Fix it in the package repository by pinning pkgver to the upstream")
+    log("release, or derive it from a pinned source revision. If the")
+    log("repository is a gitlab-sync mirror it is force-pushed, so a")
+    log("downstream commit will not survive - that package cannot be built")
+    log("here until upstream changes it.")
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

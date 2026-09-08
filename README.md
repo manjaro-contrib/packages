@@ -132,6 +132,7 @@ upload.
 | `sync-package-list` | cron | opens a PR adding repos that carry the topic but are missing from `packages.yml` |
 | `check-upstream-dupes` | weekly, on `packages.yml` | keeps an issue listing packages Arch now ships |
 | `check-config` | on `packages.yml`, `branches/*.yml` | validates both against the expected shape |
+| `check-pkgver` | daily, on `packages.yml` | fails a package whose `pkgver()` reads the clock |
 | `lint` | on any `.py` | runs ruff against the pinned rule set |
 | `check-repo` | daily, after each publish | verifies a published branch actually resolves |
 | `report-failures` | hourly | keeps an issue listing workflows whose latest run failed |
