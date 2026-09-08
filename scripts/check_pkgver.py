@@ -58,6 +58,10 @@ SHELL_CLOCK = re.compile(r"\$\{?(EPOCHSECONDS|EPOCHREALTIME)\b")
 
 # a pkgver() interrogating the checkout it was handed
 VCS_READ = re.compile(r"\b(git|hg|svn|bzr)\s+\S")
+# a pkgver() reading the *build host* instead: mhwd-nvidia derives its
+# version from whatever nvidia-dkms pacman has installed, so the version
+# moves when a dependency is bumped and nothing in the package changes
+HOST_QUERY = re.compile(r"\bpacman\s+-[A-Za-z]*[QR]")
 # makepkg's vcs source syntax, and the fragments that fix it to a revision.
 # `#branch=` and `#branch` alone track a moving tip, so they do not pin.
 VCS_SOURCE = re.compile(r"\b(git|hg|svn|bzr)\+[^\s\"\')]+")
@@ -94,6 +98,21 @@ def clock_reads(body: str) -> list[str]:
         if CLOCK.search(stripped) or PRINTF_CLOCK.search(stripped) or SHELL_CLOCK.search(
             stripped
         ):
+            found.append(stripped)
+    return found
+
+
+def queries_host(body: str) -> list[str]:
+    """pkgver() lines asking pacman what is installed on the builder.
+
+    The answer is a property of the machine, not of the source, so the
+    version changes when an unrelated package is upgraded - the same
+    rebuild-forever failure as a clock reading.
+    """
+    found = []
+    for line in body.splitlines():
+        stripped = line.split("#", 1)[0].strip()
+        if stripped and HOST_QUERY.search(stripped):
             found.append(stripped)
     return found
 
@@ -177,7 +196,7 @@ def main() -> int:
         body = pkgver_body(pkgbuild)
         if body is None:
             continue
-        reads = clock_reads(body)
+        reads = clock_reads(body) + queries_host(body)
         floats = floats_with_upstream(body, pkgbuild)
         # a package that is meant to track a moving tip says so here. The
         # rebuild loop is real for it either way, so the reason has to name
@@ -189,7 +208,7 @@ def main() -> int:
             accepted_count += 1
         if reads or floats:
             problems.append((repo, reads, floats))
-            log(f"{repo}: pkgver() {'reads the clock' if reads else 'floats with an unpinned source'}")
+            log(f"{repo}: pkgver() {'does not follow its source' if reads else 'floats with an unpinned source'}")
             for line in reads + floats:
                 log(f"    {line}")
         elif accepted:
