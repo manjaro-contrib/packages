@@ -112,8 +112,25 @@ def main() -> int:
     for name in stale:
         # listed but untagged: the repo will not be built, so the entry lies
         log(f"{name}: listed but no longer carries the {args.topic} topic")
+    head = "chore/package-list"
+    status, open_prs = api(
+        "GET", f"/repos/{args.repo}/pulls?head={org}:{head}&state=open", token
+    )
+    open_pr = open_prs[0] if status == 200 and open_prs else None
+
     if not missing:
         log(f"packages.yml lists every repo tagged {args.topic}")
+        # a proposal from an earlier run names packages that are listed now.
+        # Left open it is indistinguishable from a live one, and merging it
+        # would re-add entries that already exist.
+        if open_pr and not args.dry_run:
+            api(
+                "PATCH",
+                f"/repos/{args.repo}/pulls/{open_pr['number']}",
+                token,
+                {"state": "closed"},
+            )
+            log(f"closed stale #{open_pr['number']}")
         return 0
 
     aur = in_aur(missing)
@@ -138,14 +155,14 @@ def main() -> int:
         log(f"would add {len(missing)} entr(ies)")
         return 0
 
-    head = "chore/package-list"
     # rebuilt from base each run so the proposal never carries stale entries
     reset_branch(args.repo, head, args.base, token)
+    title = f"chore: add {len(missing)} package(s) to packages.yml"
     commit_file(
         args.repo,
         args.config,
         text,
-        f"chore: add {len(missing)} package(s) to packages.yml",
+        title,
         head,
         token,
     )
@@ -160,12 +177,14 @@ def main() -> int:
         for n in missing
     )
 
-    status, prs = api(
-        "GET", f"/repos/{args.repo}/pulls?head={org}:{head}&state=open", token
-    )
-    if status == 200 and prs:
-        api("PATCH", f"/repos/{args.repo}/pulls/{prs[0]['number']}", token, {"body": body})
-        log(f"refreshed #{prs[0]['number']}")
+    if open_pr:
+        api(
+            "PATCH",
+            f"/repos/{args.repo}/pulls/{open_pr['number']}",
+            token,
+            {"title": title, "body": body},
+        )
+        log(f"refreshed #{open_pr['number']}")
         return 0
 
     status, pr = api(
@@ -173,7 +192,7 @@ def main() -> int:
         f"/repos/{args.repo}/pulls",
         token,
         {
-            "title": f"chore: add {len(missing)} package(s) to packages.yml",
+            "title": title,
             "head": head,
             "base": args.base,
             "body": body,
