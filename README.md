@@ -295,6 +295,13 @@ condition to ignore.
 
 Generate one with `git diff` in a checkout of the package repository.
 
+Two exist today. `manjaro-keyring` gains our build server key, so a client
+trusts what we sign without importing one by hand - this is why the
+keyring is patched rather than shipped as a package of our own.
+`mhwd-amdgpu` pins the `pci.ids` it fetches to a commit rather than
+`master`, which it was checksumming against; `pkgver` now carries that
+commit's date, since the device ids are the package.
+
 ## Operating
 
 Configuration lives in GitHub. Variables: `REPO_URL`, `GPG_KEYID`,

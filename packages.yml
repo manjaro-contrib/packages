@@ -73,7 +73,17 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  # patched here: adds our build server key to the keyring upstream ships,
+  # so a client trusts what we sign without importing one by hand
+  packages-core-manjaro-keyring:
+    repo: core
+    maintainers: ["boredland"]
   packages-extra-mhwd-ati:
+    repo: extra
+    maintainers: ["boredland"]
+  # patched here: upstream pins a checksum against pci.ids on master, which
+  # goes stale on its own; pkgver now tracks the pinned pciids commit
+  packages-extra-mhwd-amdgpu:
     repo: extra
     maintainers: ["boredland"]
   # patched here: upstream's pkgver() reads the clock, and the mirror is
@@ -84,9 +94,6 @@ packages:
   # mirrored from gitlab.manjaro.org by gitlab-sync, which force-pushes:
   # a downstream commit in that repository is overwritten within two hours
   packages-core-manjaro-release:
-    repo: core
-    maintainers: ["boredland"]
-  manjaro-contrib-keyring:
     repo: core
     maintainers: ["boredland"]
   grimshot:
