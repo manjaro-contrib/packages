@@ -56,7 +56,13 @@ def blocked_sources(pkgbuild: str) -> list[str]:
     """Every source entry fetched from the unreliable host."""
     found = []
     for m in SOURCE.finditer(pkgbuild):
-        for entry in m.group(2).split():
+        # a commented entry is never fetched: calamares keeps its previous
+        # gitlab url commented out above the live one
+        live = "\n".join(
+            line.split("#", 1)[0] if line.lstrip().startswith("#") else line
+            for line in m.group(2).splitlines()
+        )
+        for entry in live.split():
             resolved = expand(entry, pkgbuild)
             if HOST in resolved:
                 found.append(entry.strip("\"'"))
