@@ -14,8 +14,7 @@ import subprocess
 import sys
 
 from botocore.exceptions import ClientError
-from catalog import load as load_catalog
-from catalog import repo_of
+from catalog import repo_for_package
 from repo_common import DB_SUFFIXES, db_name_for, prefix_for, s3_client
 from repo_remove import artifacts_for, pkgname_of
 from repo_state import write_state
@@ -60,11 +59,12 @@ def main() -> int:
 
     # a build batch can span repositories, and repo-add writes one database
     # at a time, so group first and publish each repository separately
-    catalog = load_catalog()
     grouped: dict[str, list[str]] = {}
     for pkg in packages:
         name = pkgname_of(os.path.basename(pkg))
-        grouped.setdefault(repo_of(catalog.get(name, {})), []).append(pkg)
+        # by package name, not by config key: a repository is not always
+        # named after the package it builds
+        grouped.setdefault(repo_for_package(name), []).append(pkg)
 
     for repo in sorted(grouped):
         members = grouped[repo]

@@ -17,8 +17,7 @@ import sys
 import tempfile
 
 from botocore.exceptions import ClientError
-from catalog import REPOS, repo_of
-from catalog import load as load_catalog
+from catalog import REPOS, repo_for_package
 from manifest import load
 from release_store import download as fetch_release
 from release_store import get_release
@@ -148,7 +147,6 @@ def main() -> int:
     wanted = load(args.branch, args.root)
     bucket = os.environ["R2_BUCKET"]
     s3 = s3_client()
-    catalog = load_catalog()
 
     # each repository is promoted on its own: a database covers one
     # repository, so a package moving between branches only ever affects
@@ -159,7 +157,9 @@ def main() -> int:
         members = {
             name: version
             for name, version in wanted.items()
-            if repo_of(catalog.get(name, {})) == repo
+            # a manifest names packages, and a repository is not always
+            # named after the package it builds
+            if repo_for_package(name) == repo
         }
         db_name = db_name_for(repo)
         src_prefix = prefix_for(source, args.arch, repo)
