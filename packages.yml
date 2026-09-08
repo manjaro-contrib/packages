@@ -165,6 +165,10 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  # patched here: cloned from our mirror, gitlab.manjaro.org fails often
+  # enough to break builds outright
+  packages-extra-manjaro-settings-manager:
+    maintainers: ["boredland"]
   # patched here: fetched from our mirror, gitlab.manjaro.org fails often
   # enough to break builds outright
   packages-extra-calamares:

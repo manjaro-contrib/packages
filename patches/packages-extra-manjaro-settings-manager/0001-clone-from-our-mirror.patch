@@ -1,0 +1,16 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index 08c73bd..5ff8371 100644
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -41,7 +41,10 @@ checkdepends=(
+   'desktop-file-utils'
+ )
+ # source=("git+https://gitlab.manjaro.org/applications/manjaro-settings-manager.git#tag=$pkgver")
+-source=("git+https://gitlab.manjaro.org/applications/manjaro-settings-manager.git#commit=${_commit}")
++# Cloned from our mirror rather than gitlab.manjaro.org, whose clones fail
++# often enough to break builds outright. url stays as it is - it states
++# where the package comes from. See release#5.
++source=("$pkgname::git+https://github.com/manjaro-contrib/applications-manjaro-settings-manager.git#commit=${_commit}")
+ sha256sums=('a1c5aee40456e2ba4dad89a1af5e7cc25e99b9e01bb16316d7c36e27812ed29a')
+ 
+ prepare() {
