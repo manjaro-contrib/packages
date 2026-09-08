@@ -68,6 +68,9 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  manjaro-contrib-keyring:
+    repo: core
+    maintainers: ["boredland"]
   grimshot:
     maintainers: ["boredland"]
   gtk3-nocsd:
