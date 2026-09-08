@@ -69,27 +69,15 @@ Server = https://packages.manjaro.download/unstable/$repo/$arch
 
 ### aarch64
 
-Every package is built for both `x86_64` and `aarch64`, natively on the
-runner for that architecture rather than under emulation. All 25 declare
-either `any` or `aarch64`, so nothing is architecture-gated today.
+Not published. Building stopped in #64 and the tree was withdrawn: Manjaro's
+ARM branches carry a toolchain years behind the x86 one, and Arch Linux ARM
+fixes the toolchain but is a different distribution to link against, so the
+result was packages no aarch64 user would actually run. #50 has the detail.
 
-Upstream serves arm as a separate tree - `arm-stable/core/aarch64/` - so a
-`pacman.conf` copied from a Manjaro ARM mirror expects that shape. We
-store the architecture below the repository instead, keeping a branch in
-one place rather than splitting each in two:
-
-```
-unstable/extra/aarch64/
-```
-
-`arm-<branch>` is served as an alias of it, so both work:
-
-```ini
-Server = https://packages.manjaro.download/arm-unstable/$repo
-```
-
-Only `aarch64` is aliased. `arm-stable/core/x86_64` does not exist
-upstream either, so honouring it would invent a path no mirror serves.
+The layout stays arch-aware throughout, so re-enabling is `ARCHES` in
+`build-publish.yml` and `scripts/repo_common.py`. The worker still resolves
+`arm-<branch>` to the aarch64 tree, which is where those packages would
+reappear.
 
 Swap `unstable` for `testing` or `stable` to follow a slower branch.
 `SigLevel = Required DatabaseRequired` verifies both the packages and the
