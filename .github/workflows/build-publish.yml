@@ -206,13 +206,21 @@ jobs:
             --repo "${{ matrix.package.repo }}" \
             --version "${{ matrix.package.version }}" \
             --pkg-dir pkg
+      - name: collect packages into an archive
+        # upload-artifact rejects a colon anywhere in a path, and a pacman
+        # epoch always has one: zsh-theme-powerlevel10k-1:1.20.18-1 failed
+        # to upload after building cleanly. Wrapping the files in a tar we
+        # name ourselves keeps the epoch in the package filename, where
+        # repo-add needs it, and out of the artifact path.
+        run: |
+          find pkg -maxdepth 1 -name '*.pkg.tar.zst' -o -maxdepth 1 -name '*.pkg.tar.zst.sig' \
+            | sed 's|^pkg/||' > files.txt
+          tar -cf artifact.tar -C pkg -T files.txt
       - name: upload package artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pkg-${{ matrix.package.arch }}-${{ matrix.package.pkgbase }}
-          path: |
-            pkg/*.pkg.tar.zst
-            pkg/*.pkg.tar.zst.sig
+          path: artifact.tar
           retention-days: 1
           if-no-files-found: error
 
@@ -243,8 +251,13 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: pkg-${{ matrix.arch }}-*
-          path: packages
-          merge-multiple: true
+          path: artifacts
+      - name: unpack the archives
+        # one artifact.tar per build leg, each in its own directory because
+        # merge-multiple would collide on the shared name
+        run: |
+          mkdir -p packages
+          find artifacts -name artifact.tar -exec tar -xf {} -C packages \;
       - name: is there anything for this architecture
         # the other architecture may have been the only one with work, and
         # publish.py treats an empty directory as a failure
