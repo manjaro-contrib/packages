@@ -22,11 +22,12 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-import patches
 from catalog import load as load_catalog
 from pkgbuild import fields as parse_fields
 from pkgbuild import strip_constraint
 from release_store import get_release, has_assets
+
+import patches
 
 TOPIC = "pkg"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
