@@ -31,6 +31,15 @@
 
 packages:
   # tracked against the AUR
+  packages-extra-mhwd-nvidia-390xx:
+    upstream: https://aur.archlinux.org/mhwd-nvidia-390xx.git
+    maintainers: ["boredland"]
+  packages-extra-mhwd-nvidia-470xx:
+    upstream: https://aur.archlinux.org/mhwd-nvidia-470xx.git
+    maintainers: ["boredland"]
+  packages-extra-update-grub:
+    upstream: https://aur.archlinux.org/update-grub.git
+    maintainers: ["boredland"]
   packages-multilib-lib32-glib-networking:
     upstream: https://aur.archlinux.org/lib32-glib-networking.git
     repo: multilib
