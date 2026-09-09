@@ -129,12 +129,22 @@ sed -i "/^#\[multilib\]/,+1 s/^#//" /etc/pacman.conf
 # they assume a host with multilib already set up - so makepkg -s installs
 # only lib32-glibc and the link fails on "skipping incompatible
 # libgcc_s.so.1".
+# -Syu, not -Sy: makepkg -s installs makedepends with plain pacman -S, so
+# they come from the current repositories while the image carries whatever
+# it was built with. grub pulls rsync that way and got one linked against a
+# newer libacl than the image had - it then exited 0 while fetching
+# nothing, and bootstrap left a truncated po/de.po that failed at a
+# different line every run. Upgrading first keeps the two generations in
+# step.
 pacman -Syu --noconfirm --needed base-devel git sudo lib32-gcc-libs >/dev/null
 id builder >/dev/null 2>&1 || useradd -m builder
 echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
 cp -r /src /home/builder/pkg
 chown -R builder:builder /home/builder/pkg
 cd /home/builder/pkg
+# the same upgrade the workflow does, for the same reason: makepkg -s
+# installs makedepends with plain pacman -S
+pacman -Syu --noconfirm >/dev/null
 # CI imports these before building, so a package whose source is signed
 # fails here and nowhere else without it - which makes a local build
 # unusable as evidence. Mirrors build-publish.yml.

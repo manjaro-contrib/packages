@@ -1,0 +1,18 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index 0958daf..de19f69 100644
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -240,7 +240,12 @@ build() {
+       # language directory does not like -j option, build it first with -j1
+       make -j1 po/
+     else
+-      sed -i -e 's#po docs##' Makefile
++      # Makefile.in as well: configure regenerates Makefile from it, and on
++      # this tree po/ survived the edit to the generated file - every
++      # non-efi platform then built translations, msgmerge rewrote de.po in
++      # place, and it failed at a different line each run (4430, 3819, 7249
++      # across three builds).
++      sed -i -e 's#po docs##' Makefile.in Makefile
+     fi
+     echo "Run make for ${i} build..."
+     make

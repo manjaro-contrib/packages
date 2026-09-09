@@ -194,6 +194,14 @@ jobs:
           GPG_KEYID: ${{ vars.GPG_KEYID }}
         run: |
           cd pkg
+          # makepkg -s installs makedepends with plain pacman -S, so they
+          # come from the current repositories while the image carries
+          # whatever it was built with. grub pulled an rsync linked against
+          # a newer libacl than the image had; it exited 0 while fetching
+          # nothing, and bootstrap left a truncated po/de.po that failed at
+          # a different line every run. Upgrading first keeps the two
+          # generations in step, for every package rather than that one.
+          pacman -Syu --noconfirm
           # --nocheck: several check() suites need a network or a display
           # that a sandboxed runner does not have. lib32-libsoup3 passed 34
           # of 39 and timed out on proxy-test, connection-test, auth-test,

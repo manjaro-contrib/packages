@@ -169,6 +169,11 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  # patched here: upstream strips po from the generated Makefile, which
+  # configure regenerates. Splits into install-grub and update-grub
+  packages-core-grub:
+    repo: core
+    maintainers: ["boredland"]
   # patched here: upstream's PKGBUILD lists a patch file it never
   # committed. Splits into mhwd-nvidia-580xx among others
   packages-extra-nvidia-580xx-utils:
