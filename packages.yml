@@ -166,6 +166,12 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  packages-core-linux618:
+    repo: core
+    maintainers: ["boredland"]
+  packages-core-linux72:
+    repo: core
+    maintainers: ["boredland"]
   # patched here: upstream strips po from the generated Makefile, which
   # configure regenerates. Splits into install-grub and update-grub
   packages-core-grub:
