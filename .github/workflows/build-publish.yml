@@ -111,12 +111,27 @@ jobs:
           # publish.py writes both names; these sections read the prefixed
           # one, so both repositories are visible at once (#62).
           #
-          # $arch is expanded by pacman, not the shell.
-          # shellcheck disable=SC2016
-          for repo in core extra multilib; do
-            printf '\n[contrib-%s]\nSigLevel = Required DatabaseRequired\nServer = %s/%s/%s/$arch\n' \
-              "$repo" "$REPO_URL" "$BRANCH" "$repo" >> /etc/pacman.conf
-          done
+          # Prepended, not appended: pacman takes the first repository that
+          # satisfies a dependency, so appending let the distribution's older
+          # copy win. linux72-headers resolved to core's 7.2.3-2 while contrib
+          # carried 7.2.3-3, and every extramodule then read
+          # /usr/src/linux72/version as 7.2.3-2-MANJARO and installed into a
+          # directory the kernel does not own - modules that cannot load.
+          # Safe only because the databases are contrib-* prefixed: the
+          # distribution's own sections keep their names and stay visible.
+          #
+          first=$(grep -nE '^\[core\]' /etc/pacman.conf | cut -d: -f1)
+          {
+            head -n "$((first - 1))" /etc/pacman.conf
+            for repo in core extra multilib; do
+              # $arch is expanded by pacman, not the shell.
+              # shellcheck disable=SC2016
+              printf '[contrib-%s]\nSigLevel = Required DatabaseRequired\nServer = %s/%s/%s/$arch\n\n' \
+                "$repo" "$REPO_URL" "$BRANCH" "$repo"
+            done
+            tail -n "+$first" /etc/pacman.conf
+          } > /tmp/pacman.conf
+          mv /tmp/pacman.conf /etc/pacman.conf
           pacman -Sy --noconfirm
       - name: mint an app token
         # app-authored commits and releases are signed by github
