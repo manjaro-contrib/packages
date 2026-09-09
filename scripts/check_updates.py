@@ -28,6 +28,7 @@ from pkgbuild import fields as parse_fields
 from pkgbuild import strip_constraint
 from release_store import get_release, has_assets
 from repo_common import prefix_for
+from repo_remove import pkgname_of
 
 import patches
 
@@ -145,11 +146,19 @@ def full_version(fields: dict) -> str:
 
 def artifact_names(fields: dict, target_arch: str) -> list[str]:
     version = full_version(fields)
-    # 'any' packages keep their arch suffix but live in the arch-specific dir
-    arch = "any" if "any" in fields["arch"] else target_arch
-    return [
-        f"{name}-{version}-{arch}.pkg.tar.zst" for name in fields["pkgname"]
-    ]
+    # A split member may override arch in its own package_<name>(), and the
+    # filename follows the override: nvidia-utils is x86_64 while its
+    # mhwd-nvidia member is any. Taking the global value for all of them
+    # predicted a filename makepkg never writes, so the package looked
+    # unbuilt on every run.
+    per_package = fields.get("_pkgarch") or {}
+    names = []
+    for name in fields["pkgname"]:
+        declared = per_package.get(name, fields["arch"])
+        # 'any' packages keep their arch suffix but live in the arch dir
+        arch = "any" if "any" in declared else target_arch
+        names.append(f"{name}-{version}-{arch}.pkg.tar.zst")
+    return names
 
 
 def exists_on_r2(
@@ -246,14 +255,24 @@ def main() -> int:
             continue
         version = full_version(fields)
         artifacts = artifact_names(fields, args.arch)
-        # the prefix carries the repository, so a lookup without it 404s on
-        # every package and the whole catalog looks unbuilt
-        repo_name = repo_for_package(fields["pkgbase"])
+        # Each subpackage separately, not the pkgbase: publish.py resolves
+        # a repository per package name, so a split build can put its
+        # members in different ones - linux61 goes to core and
+        # linux61-headers to extra. Resolving the pkgbase for all of them
+        # looked for the headers in core, never found them, and re-queued
+        # the kernel on every run no matter how often it published.
+        #
+        # The prefix carries the repository, so a lookup without it 404s on
+        # every package and the whole catalog looks unbuilt.
         missing = [
             name
             for name in artifacts
             if not exists_on_r2(
-                args.repo_url, args.branch, args.arch, repo_name, name
+                args.repo_url,
+                args.branch,
+                args.arch,
+                repo_for_package(pkgname_of(name)),
+                name,
             )
         ]
         if not missing:

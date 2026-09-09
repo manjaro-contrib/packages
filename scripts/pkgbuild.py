@@ -28,7 +28,17 @@ def fields(content: str, workdir: str) -> tuple[dict[str, str] | None, str]:
     )
     if result.returncode != 0:
         return None, result.stderr.strip()
-    parsed = dict(
-        line.split("=", 1) for line in result.stdout.splitlines() if "=" in line
-    )
+    parsed: dict[str, str] = {}
+    # one pkgarch line per split member, so they cannot go in the flat dict
+    pkgarch: dict[str, str] = {}
+    for line in result.stdout.splitlines():
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if key == "pkgarch":
+            name, _, arch = value.partition(" ")
+            pkgarch[name] = arch
+        else:
+            parsed[key] = value
+    parsed["_pkgarch"] = pkgarch  # type: ignore[assignment]
     return parsed, ""
