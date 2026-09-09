@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Sync package repos from their upstreams (e.g. AUR) via pull requests.
 
-Reads packages.yml, and for every package whose upstream has commits the
-package repo lacks, pushes an `update-from-upstream` branch with a clean
-merge and opens a PR requesting review from the configured maintainers.
-Merge conflicts abort that package — a human has to reconcile manually.
+Reads packages.yml, and for every package whose upstream carries content
+the package repo lacks, pushes an `update-from-upstream` branch with a
+clean merge and opens a PR requesting review from the configured
+maintainers. Merge conflicts abort that package — a human has to
+reconcile manually.
 """
 
 import argparse
@@ -29,7 +30,6 @@ def log(msg: str) -> None:
 
 def run(cmd: list[str], cwd: str, check: bool = True) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, cwd=cwd, check=check, capture_output=True, text=True)
-
 
 
 def pr_exists(org: str, name: str, token: str) -> bool:
@@ -72,10 +72,13 @@ def sync_package(org: str, name: str, cfg: dict, token: str) -> bool:
         log(f"{name}: upstream is {ahead} commits ahead")
 
         # rehearse the merge locally so a conflict never reaches a pull
-        # request, then throw the result away
+        # request, then throw the result away. --allow-unrelated-histories
+        # because repos seeded by importing upstream's files share no
+        # commit with it, and git otherwise refuses outright
         run(["git", "checkout", "-b", UPDATE_BRANCH], cwd=repo)
         merge = run(
-            ["git", "merge", "--no-commit", "--no-ff", "--allow-unrelated-histories", "upstream/master"],
+            ["git", "merge", "--no-commit", "--no-ff",
+             "--allow-unrelated-histories", "upstream/master"],
             cwd=repo,
             check=False,
         )
@@ -83,7 +86,17 @@ def sync_package(org: str, name: str, cfg: dict, token: str) -> bool:
             run(["git", "merge", "--abort"], cwd=repo, check=False)
             log(f"{name}: merge conflict with upstream, manual intervention needed")
             return False
+
+        # a commit count is not a content delta: an unrelated history counts
+        # every upstream commit even when the merge resolves to exactly our
+        # tree, which would open a pull request that changes nothing
+        unchanged = run(
+            ["git", "diff", "--cached", "--quiet", "HEAD"], cwd=repo, check=False
+        ).returncode == 0
         run(["git", "merge", "--abort"], cwd=repo, check=False)
+        if unchanged:
+            log(f"{name}: upstream matches our tree, nothing to open")
+            return True
 
         default_branch = run(
             ["git", "rev-parse", "--abbrev-ref", "origin/HEAD"], cwd=repo
