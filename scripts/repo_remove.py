@@ -140,13 +140,14 @@ def main() -> int:
                             if not os.path.exists(real):
                                 continue
                             s3.upload_file(real, bucket, prefix + name)
-                        # the same bytes under the pre-#62 name, so a
-                        # client configured before the split keeps resolving
-                        s3.upload_file(
-                            real,
-                            bucket,
-                            prefix + name.replace(db_name, legacy, 1),
-                        )
+                            # the same bytes under the pre-#62 name, so a
+                            # client configured before the split keeps
+                            # resolving
+                            s3.upload_file(
+                                real,
+                                bucket,
+                                prefix + name.replace(db_name, legacy, 1),
+                            )
                     log(f"{branch}/{repo}/{arch}: database updated")
 
     if not removed_any:
