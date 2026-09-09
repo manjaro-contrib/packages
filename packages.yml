@@ -31,6 +31,10 @@
 
 packages:
   # tracked against the AUR
+  packages-multilib-lib32-libaio:
+    upstream: https://aur.archlinux.org/lib32-libaio.git
+    repo: multilib
+    maintainers: ["boredland"]
   packages-extra-mhwd-nvidia-390xx:
     upstream: https://aur.archlinux.org/mhwd-nvidia-390xx.git
     maintainers: ["boredland"]
