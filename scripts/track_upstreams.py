@@ -75,7 +75,7 @@ def sync_package(org: str, name: str, cfg: dict, token: str) -> bool:
         # request, then throw the result away
         run(["git", "checkout", "-b", UPDATE_BRANCH], cwd=repo)
         merge = run(
-            ["git", "merge", "--no-commit", "--no-ff", "upstream/master"],
+            ["git", "merge", "--no-commit", "--no-ff", "--allow-unrelated-histories", "upstream/master"],
             cwd=repo,
             check=False,
         )
