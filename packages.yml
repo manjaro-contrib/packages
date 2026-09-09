@@ -180,14 +180,6 @@ packages:
     maintainers: ["boredland"]
   packages-extra-linux618-extramodules-nvidia-470xx:
     maintainers: ["boredland"]
-  packages-extra-linux618-extramodules-nvidia-570xx:
-    maintainers: ["boredland"]
-  packages-extra-linux618-extramodules-nvidia-570xx-open:
-    maintainers: ["boredland"]
-  packages-extra-linux618-extramodules-nvidia-575xx:
-    maintainers: ["boredland"]
-  packages-extra-linux618-extramodules-nvidia-575xx-open:
-    maintainers: ["boredland"]
   packages-extra-linux618-extramodules-nvidia-580xx:
     maintainers: ["boredland"]
   packages-extra-linux618-extramodules-nvidia-580xx-open:
