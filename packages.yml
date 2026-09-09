@@ -169,6 +169,13 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  # splits into nvidia-dkms, nvidia-utils, opencl-nvidia and mhwd-nvidia
+  packages-extra-nvidia-utils:
+    maintainers: ["boredland"]
+  # patched here: upstream's pkgver() reads the clock. Splits into
+  # manjaro-pipewire among others
+  packages-extra-manjaro-meta:
+    maintainers: ["boredland"]
   # patched here: upstream's package() uses install -D with a directory
   # target, which cannot work; fixed rather than skipped
   packages-extra-manjaro-rescue:

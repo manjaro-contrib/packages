@@ -1,0 +1,14 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index 37ad706..17dc418 100644
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -24,9 +24,6 @@ source=('realtime-privileges.sh'
+ sha256sums=('de4521b2e801bb5ba53bddfaa5e62a8ebd3c7ff8247a1269f9f3b0e9821e6a46'
+             '964d6e10a3af9d6dbe1d87ac0ca0b775e98cfe4719010b6efec6e812318cfc5a')
+ 
+-pkgver() {
+-  date +%Y%m%d
+-}
+ 
+ package_manjaro-alsa() {
+   pkgdesc="Manjaro meta package for complete ALSA support"
