@@ -195,12 +195,25 @@ jobs:
         run: |
           cd pkg
           sudo -u builder makepkg -s --noconfirm --sign --key "$GPG_KEYID"
+      - name: mint a fresh app token
+        # An app token lives an hour, and a kernel takes longer: linux61
+        # compiled for 1h56m and then failed to store its release with
+        # "Token expired". The token minted before the build is still
+        # needed by the reuse step above, so this is a second one rather
+        # than a move.
+        id: app_after_build
+        if: ${{ !matrix.package.reusable }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
       - name: store build as release
         # the bucket only keeps the current version, so the release is the
         # only durable record of this binary
         if: ${{ !matrix.package.reusable }}
         env:
-          GITHUB_TOKEN: ${{ steps.app.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app_after_build.outputs.token }}
         run: |
           python3 builder/scripts/release_store.py upload \
             --repo "${{ matrix.package.repo }}" \
