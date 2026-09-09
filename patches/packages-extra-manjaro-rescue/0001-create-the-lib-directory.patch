@@ -1,0 +1,26 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index 1e2311a..7a86b91 100644
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -38,13 +38,18 @@ package() {
+   install -d "${pkgdir}/usr/bin"
+   install -d "${pkgdir}/usr/share/icons/hicolor/scalable/apps"
+ 
++  # install -D takes its last argument as a file name, so a trailing slash
++  # does not make it a directory - "install -Dm644 x dir/" fails with
++  # "cannot create regular file". -t is the form that means "into here",
++  # and cp needs the directory to exist before any of them run.
++  install -d "${pkgdir}/usr/lib/${pkgname}"
+   cp -r backend utils locale "${pkgdir}/usr/lib/${pkgname}/"
+   [ -d icons ] && cp -a icons "${pkgdir}/usr/lib/${pkgname}/"
+-  install -Dm755 main.py "${pkgdir}/usr/lib/${pkgname}/"
+-  install -Dm644 window.ui "${pkgdir}/usr/lib/${pkgname}/"
++  install -Dm755 main.py -t "${pkgdir}/usr/lib/${pkgname}"
++  install -Dm644 window.ui -t "${pkgdir}/usr/lib/${pkgname}"
+ 
+   ln -s "/usr/lib/${pkgname}/main.py" "${pkgdir}/usr/bin/${pkgname}"
+   ln -s "/usr/lib/${pkgname}/icons/hicolor/scalable/apps/${pkgname}.svg" \
+     "${pkgdir}/usr/share/icons/hicolor/scalable/apps/${pkgname}.svg"
+-  install -Dm644 "${pkgname}.desktop" "${pkgdir}/usr/share/applications/"
++  install -Dm644 "${pkgname}.desktop" -t "${pkgdir}/usr/share/applications"
+ }
