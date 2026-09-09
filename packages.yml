@@ -349,3 +349,31 @@ packages:
     maintainers: ["boredland"]
   sway-services:
     maintainers: ["boredland"]
+  packages-extra-linux72-extramodules-nvidia:
+    maintainers: ["boredland"]
+  packages-extra-linux72-extramodules-nvidia-390xx:
+    maintainers: ["boredland"]
+  packages-extra-linux72-extramodules-nvidia-470xx:
+    maintainers: ["boredland"]
+  packages-extra-linux72-extramodules-nvidia-580xx:
+    maintainers: ["boredland"]
+  packages-extra-linux72-extramodules-nvidia-580xx-open:
+    maintainers: ["boredland"]
+  packages-extra-linux72-extramodules-nvidia-open:
+    maintainers: ["boredland"]
+  packages-extra-linux61-extramodules-nvidia:
+    maintainers: ["boredland"]
+  packages-extra-linux61-extramodules-nvidia-390xx:
+    maintainers: ["boredland"]
+  packages-extra-linux61-extramodules-nvidia-470xx:
+    maintainers: ["boredland"]
+  packages-extra-linux61-extramodules-nvidia-580xx:
+    maintainers: ["boredland"]
+  packages-extra-linux61-extramodules-nvidia-580xx-open:
+    maintainers: ["boredland"]
+  packages-extra-linux61-extramodules-nvidia-open:
+    maintainers: ["boredland"]
+  packages-extra-linux61-extramodules-bbswitch:
+    maintainers: ["boredland"]
+  packages-extra-linux61-extramodules-broadcom-wl:
+    maintainers: ["boredland"]
