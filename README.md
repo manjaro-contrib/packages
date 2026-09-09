@@ -47,6 +47,21 @@ resolves the same way, and each database is named after its repository -
 `extra.db`, not a single shared name, which is what pacman derives from
 the section name.
 
+Each database is also published as `contrib-extra.db` alongside
+`extra.db`. Pacman keeps one database per section name and takes the
+first server that answers, so a contrib `[extra]` beside the
+distribution's is discarded - which meant a build could not see packages
+we had just published (#62). Configure the prefixed sections to run both:
+
+```ini
+[contrib-extra]
+SigLevel = Required DatabaseRequired
+Server = https://packages.manjaro.download/unstable/extra/$arch
+```
+
+The unprefixed names stay published, so a configuration written before
+this keeps working.
+
 Every package is `extra` today, so that one section is enough. `core` and
 `multilib` follow the same shape, and exist so a client can mirror
 Manjaro's own `pacman.conf` structure and set `SigLevel` or `Usage` per

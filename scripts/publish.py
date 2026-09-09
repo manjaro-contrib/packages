@@ -15,7 +15,13 @@ import sys
 
 from botocore.exceptions import ClientError
 from catalog import repo_for_package
-from repo_common import DB_SUFFIXES, db_name_for, prefix_for, s3_client
+from repo_common import (
+    DB_SUFFIXES,
+    db_name_for,
+    legacy_db_name_for,
+    prefix_for,
+    s3_client,
+)
 from repo_remove import artifacts_for, pkgname_of
 from repo_state import write_state
 
@@ -111,6 +117,7 @@ def main() -> int:
 
         prune_superseded(s3, bucket, prefix, [os.path.basename(p) for p in members])
 
+        legacy = legacy_db_name_for(repo)
         for suffix in DB_SUFFIXES:
             for name in (f"{db_name}{suffix}", f"{db_name}{suffix}.sig"):
                 local = os.path.join(args.pkg_dir, name)
@@ -120,6 +127,12 @@ def main() -> int:
                     continue
                 s3.upload_file(real, bucket, prefix + name)
                 log(f"{repo}: uploaded {name}")
+                # the same bytes under the pre-#62 name, so a client
+                # configured as the README documents keeps resolving while
+                # the prefixed section is adopted
+                s3.upload_file(
+                    real, bucket, prefix + name.replace(db_name, legacy, 1)
+                )
 
     write_state(s3, bucket, log)
 

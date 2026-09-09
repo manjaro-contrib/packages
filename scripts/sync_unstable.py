@@ -30,6 +30,7 @@ from repo_common import (
     ARCHES,
     DB_SUFFIXES,
     db_name_for,
+    legacy_db_name_for,
     list_packages,
     prefix_for,
     s3_client,
@@ -108,6 +109,7 @@ def withdraw(
                             raise
             log(f"{branch}/{repo}/{arch}: withdrew {name}")
 
+        legacy = legacy_db_name_for(repo)
         for suffix in DB_SUFFIXES:
             for fname in (f"{db_name}{suffix}", f"{db_name}{suffix}.sig"):
                 # repo-remove writes .db/.files as symlinks to the archives
@@ -115,6 +117,11 @@ def withdraw(
                 if not os.path.exists(real):
                     continue
                 s3.upload_file(real, bucket, prefix + fname)
+                # the same bytes under the pre-#62 name, so a client
+                # configured before the split keeps resolving
+                s3.upload_file(
+                    real, bucket, prefix + fname.replace(db_name, legacy, 1)
+                )
 
     return sorted(found)
 

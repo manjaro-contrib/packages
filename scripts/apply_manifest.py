@@ -25,6 +25,7 @@ from repo_common import (
     DB_SUFFIXES,
     FLOW,
     db_name_for,
+    legacy_db_name_for,
     list_packages,
     prefix_for,
     s3_client,
@@ -162,6 +163,7 @@ def main() -> int:
             if repo_for_package(name) == repo
         }
         db_name = db_name_for(repo)
+        legacy = legacy_db_name_for(repo)
         src_prefix = prefix_for(source, args.arch, repo)
         dst_prefix = prefix_for(args.branch, args.arch, repo)
 
@@ -265,6 +267,13 @@ def main() -> int:
                         continue
                     s3.upload_file(real, bucket, dst_prefix + fname)
                     log(f"{repo}: uploaded {fname}")
+                    # the same bytes under the pre-#62 name, so a client
+                    # configured before the split keeps resolving
+                    s3.upload_file(
+                        real,
+                        bucket,
+                        dst_prefix + fname.replace(db_name, legacy, 1),
+                    )
         changed = True
 
     if failed:

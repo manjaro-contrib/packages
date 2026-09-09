@@ -16,14 +16,36 @@ DB_SUFFIXES = [".db", ".db.tar.gz", ".files", ".files.tar.gz"]
 # arch-aware throughout, so re-adding it is this line plus build-publish.
 ARCHES = ("x86_64",)
 
+# What a contrib section is called in pacman.conf. A database is fetched by
+# its section name, so sharing [extra] with the distribution is what made
+# pacman discard one of them - see db_name_for.
+DB_PREFIX = "contrib-"
+
+
 def db_name_for(repo: str) -> str:
     """The database filename stem for a repository.
 
-    Upstream names each database after its repository - core.db, extra.db -
-    and pacman derives the filename from the section name in pacman.conf,
-    so [extra] fetches extra.db and nothing else. A single name shared
-    across repositories would be unreadable by a stock client.
+    Named after the repository *and* prefixed: pacman keeps one database
+    per section name and takes the first server that answers, so a contrib
+    [extra] beside the distribution's is discarded with "database already
+    registered" and whichever survives hides the other. That was harmless
+    while nothing depended on our own output, and became a hard blocker the
+    moment multilib carried lib32-* packages that other lib32-* packages
+    need - the build could not see what we had just published (#62).
+
+    A distinct name lets both be configured at once:
+
+        [contrib-multilib]
+        Server = .../unstable/multilib/$arch
+
+    publish writes the old name too, so a client configured the documented
+    way keeps working; see also_publishes_as.
     """
+    return f"{DB_PREFIX}{repo}"
+
+
+def legacy_db_name_for(repo: str) -> str:
+    """The unprefixed name, still published so existing clients keep working."""
     return repo
 
 
