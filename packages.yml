@@ -169,6 +169,10 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  # patched here: upstream's PKGBUILD lists a patch file it never
+  # committed. Splits into mhwd-nvidia-580xx among others
+  packages-extra-nvidia-580xx-utils:
+    maintainers: ["boredland"]
   # splits into nvidia-dkms, nvidia-utils, opencl-nvidia and mhwd-nvidia
   packages-extra-nvidia-utils:
     maintainers: ["boredland"]
