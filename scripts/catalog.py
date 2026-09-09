@@ -44,13 +44,20 @@ def listed_package_names(config: str = CONFIG) -> set[str]:
     sync_unstable compares published filenames against this, so using the
     repository keys directly withdrew every package whose repository is
     not named after it - which is what emptied `core` in #66.
+
+    A kernel module repository carries an `extramodules-` infix its package
+    never does: packages-extra-linux618-extramodules-acpi_call builds
+    linux618-acpi_call. Dropping only the group prefix left the infix, so
+    no module was ever authorised and one catalog edit withdrew all 20.
     """
     names = set()
     for key in load(config):
         names.add(key)
         for group in MIRROR_GROUPS:
             if key.startswith(f"{group}-"):
-                names.add(key[len(group) + 1 :])
+                bare = key[len(group) + 1 :]
+                names.add(bare)
+                names.add(bare.replace("-extramodules-", "-", 1))
     return names
 
 
