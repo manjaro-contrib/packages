@@ -166,6 +166,56 @@ packages:
     maintainers: ["boredland"]
 
   # maintained here; no external upstream
+  # kernel modules: each builds against its own kernel's headers, so
+  # discovery orders them after the kernel publishes
+  packages-extra-linux618-extramodules-acpi_call:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-bbswitch:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-broadcom-wl:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-nvidia:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-nvidia-390xx:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-nvidia-470xx:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-nvidia-570xx:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-nvidia-570xx-open:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-nvidia-575xx:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-nvidia-575xx-open:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-nvidia-580xx:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-nvidia-580xx-open:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-nvidia-open:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-r8168:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-rtl8723bu:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-tp_smapi:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-vhba-module:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-virtualbox:
+    maintainers: ["boredland"]
+  packages-extra-linux618-extramodules-zfs:
+    maintainers: ["boredland"]
+  packages-extra-linux72-extramodules-acpi_call:
+    maintainers: ["boredland"]
+  packages-extra-linux72-extramodules-bbswitch:
+    maintainers: ["boredland"]
+  packages-extra-linux72-extramodules-broadcom-wl:
+    maintainers: ["boredland"]
+  packages-extra-linux72-extramodules-r8168:
+    maintainers: ["boredland"]
+  packages-extra-linux72-extramodules-vhba-module:
+    maintainers: ["boredland"]
   packages-core-linux618:
     repo: core
     maintainers: ["boredland"]
