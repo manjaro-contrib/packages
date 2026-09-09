@@ -19,9 +19,12 @@ Runs under the repo-publish concurrency lock - it rewrites the database.
 """
 
 import argparse
+import io
 import os
+import re
 import subprocess
 import sys
+import tarfile
 import tempfile
 
 from botocore.exceptions import ClientError
@@ -38,18 +41,55 @@ from repo_common import (
 from repo_remove import pkgname_of
 from repo_state import write_state
 
+# %FIELD%\nvalue in a pacman desc entry
+FIELD = re.compile(r"%([A-Z0-9]+)%\n([^\n]*)")
+
 
 def log(msg: str) -> None:
     print(msg, file=sys.stderr, flush=True)
 
 
-def orphans(s3, bucket: str, prefix: str, allowed: set[str]) -> dict[str, list[str]]:
+def bases(s3, bucket: str, prefix: str, db_name: str) -> dict[str, str]:
+    """Each published package mapped to the pkgbase that produced it.
+
+    A split package publishes members the config never names -
+    packages-extra-pamac builds pamac-gtk - and the database records the
+    relationship in %BASE%, so it needs no second list to drift from.
+    """
+    try:
+        payload = s3.get_object(
+            Bucket=bucket, Key=f"{prefix}{db_name}.db.tar.gz"
+        )["Body"].read()
+    except ClientError:
+        return {}
+    mapping = {}
+    with tarfile.open(fileobj=io.BytesIO(payload), mode="r:gz") as tar:
+        for member in tar.getmembers():
+            if not member.name.endswith("/desc"):
+                continue
+            handle = tar.extractfile(member)
+            if handle is None:
+                continue
+            desc = handle.read().decode()
+            fields = dict(FIELD.findall(desc))
+            if "NAME" in fields:
+                mapping[fields["NAME"]] = fields.get("BASE", fields["NAME"])
+    return mapping
+
+
+def orphans(
+    s3, bucket: str, prefix: str, allowed: set[str], base_of: dict[str, str]
+) -> dict[str, list[str]]:
     """Published artifacts whose package is no longer listed, by name."""
     found: dict[str, list[str]] = {}
     for filename in list_packages(s3, bucket, prefix):
         name = pkgname_of(filename)
-        if name and name not in allowed:
-            found.setdefault(name, []).append(filename)
+        if not name:
+            continue
+        # a split member is authorised by its pkgbase being listed
+        if name in allowed or base_of.get(name, name) in allowed:
+            continue
+        found.setdefault(name, []).append(filename)
     return found
 
 
@@ -65,7 +105,7 @@ def withdraw(
     """Delete unlisted packages from one branch. Returns the names removed."""
     prefix = prefix_for(branch, arch, repo)
     db_name = db_name_for(repo)
-    found = orphans(s3, bucket, prefix, allowed)
+    found = orphans(s3, bucket, prefix, allowed, bases(s3, bucket, prefix, db_name))
     if not found:
         log(f"{branch}/{repo}/{arch}: nothing to withdraw")
         return []
