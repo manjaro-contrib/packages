@@ -104,18 +104,18 @@ jobs:
           # first replaces the distribution's 15518-package extra with
           # contrib's 25, and putting it second means contrib is never seen.
           #
-          # Repeating a section, as below, is what pacman does with the
-          # conflict today: it discards the duplicate, and dependency
-          # resolution silently falls back to the distribution's repos.
-          # That is wrong but harmless, and it is what every build has run
-          # with. Fixing it properly means publishing contrib under its own
-          # database name, which is a change to publish.py - see #62.
+          # contrib-<repo>, not <repo>: pacman keeps one database per
+          # section name and discards a duplicate, so sharing [extra] with
+          # the distribution hid whichever lost. A lib32-* package then
+          # could not see the lib32-* dependency published minutes earlier.
+          # publish.py writes both names; these sections read the prefixed
+          # one, so both repositories are visible at once (#62).
           #
-          # $repo and $arch are expanded by pacman, not the shell.
+          # $arch is expanded by pacman, not the shell.
           # shellcheck disable=SC2016
           for repo in core extra multilib; do
-            printf '\n[%s]\nSigLevel = Required DatabaseRequired\nServer = %s/%s/$repo/$arch\n' \
-              "$repo" "$REPO_URL" "$BRANCH" >> /etc/pacman.conf
+            printf '\n[contrib-%s]\nSigLevel = Required DatabaseRequired\nServer = %s/%s/%s/$arch\n' \
+              "$repo" "$REPO_URL" "$BRANCH" "$repo" >> /etc/pacman.conf
           done
           pacman -Sy --noconfirm
       - name: mint an app token
