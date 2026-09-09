@@ -196,6 +196,7 @@ packages:
     maintainers: ["boredland"]
   packages-extra-linux618-extramodules-virtualbox:
     maintainers: ["boredland"]
+    names: ["linux618-virtualbox-host-modules"]
   packages-extra-linux618-extramodules-zfs:
     maintainers: ["boredland"]
   packages-extra-linux72-extramodules-acpi_call:

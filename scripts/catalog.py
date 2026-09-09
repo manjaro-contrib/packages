@@ -51,8 +51,13 @@ def listed_package_names(config: str = CONFIG) -> set[str]:
     no module was ever authorised and one catalog edit withdrew all 20.
     """
     names = set()
-    for key in load(config):
+    for key, entry in load(config).items():
         names.add(key)
+        # a repository whose PKGBUILD renames the package outright, like
+        # packages-extra-linux618-extramodules-virtualbox building
+        # linux618-virtualbox-host-modules, cannot be derived - it is
+        # declared
+        names.update(entry.get("names") or ())
         for group in MIRROR_GROUPS:
             if key.startswith(f"{group}-"):
                 bare = key[len(group) + 1 :]

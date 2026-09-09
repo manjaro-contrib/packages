@@ -24,7 +24,7 @@ VERSION = re.compile(r"^[\w.+]+-[\w.+]+$")
 # pacman package names: no uppercase, no spaces, no leading dash
 PKGNAME = re.compile(r"^[a-z\d][a-z\d@._+-]*$")
 
-ENTRY_FIELDS = {"upstream", "maintainers", "repo", "override", "floating"}
+ENTRY_FIELDS = {"upstream", "maintainers", "repo", "override", "floating", "names"}
 
 
 def log(msg: str) -> None:
