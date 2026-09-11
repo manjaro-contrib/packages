@@ -5,5 +5,5 @@
 #
 # Jobs running inside images/Containerfile take these from pacman instead,
 # since they need the system pacman's own generation of the tooling.
-boto3==1.43.90
+boto3==1.43.93
 PyYAML==6.0.3
