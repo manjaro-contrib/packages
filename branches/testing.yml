@@ -5,19 +5,137 @@
 
 packages:
   bluetuith: 0.2.7-3
+  calamares: 3.4.2-2
+  ckbcomp: 1.245-1
   flashfocus: 2.9.0-1
   grimshot: 1.10-1
-  gtk3-nocsd: r82.512c2bd-1
+  grub: 2:2.14-1
+  grub-theme-live-common: 20.2-16
+  grub-theme-live-manjaro: 20.2-16
+  grub-theme-manjaro: 20.2-16
+  gtk3-nocsd: r82.512c2bd-2
   idlehack: 0.r21-1
+  install-grub: 2:2.14-1
+  kitemmodels5: 5.116.0-3
   kvantum-theme-matcha: 20200810-2
+  lib32-audit: 4.2.1-1
+  lib32-duktape: 2.7.0-7
+  lib32-flex: 2.6.4-5
+  lib32-glib-networking: 1:2.80.1-1
+  lib32-libaio: 0.3.113-5
+  lib32-libarchive: 3.8.9-1
+  lib32-libbpf: 1.7.0-1
+  lib32-libcap: 2.78-1
+  lib32-libnsl: 2.0.1-2
+  lib32-libproxy: 0.5.12-1
+  lib32-libsoup3: 3.6.6-2
+  lib32-libtirpc: 1.3.7-1
+  lib32-libvpx: 1.16.0-2
+  lib32-libwebp: 1.6.0-1
+  lib32-lz4: 1.10.0-3
+  lib32-mpg123: 1.33.7-1
+  lib32-pam: 1.7.2-1
+  lib32-polkit: 127-1
+  lib32-sdl2: 2.32.10-1
+  libpamac: 11.7.4-6
+  libpamac-flatpak-plugin: 11.7.4-6
+  libpamac-snap-plugin: 11.7.4-6
+  linux61: 6.1.187-2
+  linux61-bbswitch: 0.8-221
+  linux61-broadcom-wl: 6.30.223.271-220
+  linux61-headers: 6.1.187-2
+  linux61-nvidia: 610.57.04-10
+  linux61-nvidia-470xx: 470.256.02-112
+  linux61-nvidia-580xx: 580.178.04-10
+  linux61-nvidia-580xx-open: 580.178.04-10
+  linux61-nvidia-open: 610.57.04-10
+  linux618: 6.18.49-2
+  linux618-acpi_call: 1.2.2-66
+  linux618-bbswitch: 0.8-67
+  linux618-broadcom-wl: 6.30.223.271-66
+  linux618-headers: 6.18.49-2
+  linux618-nvidia: 610.57.04-13
+  linux618-nvidia-390xx: 390.157-68
+  linux618-nvidia-470xx: 470.256.02-66
+  linux618-nvidia-580xx: 580.178.04-13
+  linux618-nvidia-580xx-open: 580.178.04-13
+  linux618-nvidia-open: 610.57.04-13
+  linux618-r8168: 8.056.02-51
+  linux618-rtl8723bu: 20260507-34
+  linux618-tp_smapi: 0.45-66
+  linux618-vhba-module: 20260313-42
+  linux618-virtualbox-host-modules: 7.2.16-8
+  linux618-zfs: 2.4.4-3
+  linux72: 7.2.3-3
+  linux72-acpi_call: 1.2.2-6
+  linux72-bbswitch: 0.8-6
+  linux72-broadcom-wl: 6.30.223.271-7
+  linux72-headers: 7.2.3-3
+  linux72-nvidia: 610.57.04-6
+  linux72-nvidia-390xx: 390.157-5
+  linux72-nvidia-470xx: 470.256.02-6
+  linux72-nvidia-580xx: 580.178.04-6
+  linux72-nvidia-580xx-open: 580.178.04-6
+  linux72-nvidia-open: 610.57.04-6
+  linux72-r8168: 8.056.02-6
+  linux72-vhba-module: 20260313-6
+  manjaro-alsa: 20260127-1
+  manjaro-bluetooth: 20260127-1
   manjaro-browser-settings: 20231111-2
+  manjaro-connman: 20260127-1
+  manjaro-gstreamer: 20260127-1
+  manjaro-icons: 20240502-1
+  manjaro-input: 20260127-1
+  manjaro-keyring: 20251003-2
+  manjaro-live-base: 20260802-1
+  manjaro-live-portable-efi: 20260802-1
+  manjaro-live-skel: 20260802-1
+  manjaro-live-systemd: 20260802-1
+  manjaro-log-helper: 1.0.2-1
+  manjaro-modem: 20260127-1
+  manjaro-pipewire: 20260127-1
+  manjaro-pulse: 20260127-1
+  manjaro-release: 26.1.1-1
+  manjaro-rescue: 3.0.0-1
+  manjaro-settings-manager: 0.5.8-10
+  manjaro-settings-manager-knotifier: 0.5.8-10
+  manjaro-settings-manager-notifier: 0.5.8-10
   manjaro-sway-settings: 17.2.4-12
   manjaro-sway-settings-git: r2200.a6f38f52-1
+  manjaro-system: 20230401-1
+  manjaro-tools-base-git: r3071.5c97abe-1
+  manjaro-tools-iso-git: r3071.5c97abe-1
+  manjaro-tools-pkg-git: r3071.5c97abe-1
+  manjaro-tools-yaml-git: r3071.5c97abe-1
+  manjaro-zsh-config: 0.26-4
+  mhwd: 0.6.6-6
+  mhwd-amdgpu: 19.1.0+pciids.20260907-1
+  mhwd-ati: 19.1.0-1
+  mhwd-db: 20260305-1
+  mhwd-nvidia: 535.129.03-2
+  mhwd-nvidia-390xx: 390.143-1
+  mhwd-nvidia-470xx: 470.94-1
+  mhwd-nvidia-580xx: 580.178.04-1
+  mkinitcpio-openswap: 0.1.1-1
+  nvidia-580xx-dkms: 580.178.04-1
+  nvidia-580xx-open-dkms: 580.178.04-1
+  nvidia-580xx-utils: 580.178.04-1
+  nvidia-dkms: 535.129.03-2
+  nvidia-driver-assistant: 0.23.48.01-7
+  nvidia-utils: 535.129.03-2
   nwg-wrapper: 0.1.3-10
+  opencl-nvidia: 535.129.03-2
+  opencl-nvidia-580xx: 580.178.04-1
   pacman-log-orphans-hook: 1.1-4
+  pacman-mirrors: 5.3-2
   pacseek: 1.8.6-3
+  pamac-cli: 11.7.4-2
+  pamac-debug: 11.7.5-2
+  pamac-gnome-integration: 11.7.5-2
+  pamac-gtk: 11.7.5-2
   phinger-cursors: 2.1-1
   poweralertd: 0.3.0-1
+  python-npyscreen: 5.0.4-1
   python-xpybutil: 0.0.6-5
   sway-services: r33.e3d9b8b-7
   swaycwd: 1.1-1
@@ -25,7 +143,13 @@ packages:
   swayr: 0.28.2-1
   swayshot: 2.8.0-1
   sworkstyle: 1.4.0-3
+  timeshift-autosnap-manjaro: 0.10.0-1
+  ttf-meslo-nerd-font-powerlevel10k: 20230403-2
+  udev-usb-sync: 1.1-2
+  update-grub: 2:2.14-1
   way-displays: 2.0.0-4
   wluma: 4.11.1-2
   xdg-terminal-exec: 0.14.3-1
+  yay: 13.0.1-1
   zeit: 1.1.0-1
+  zsh-theme-powerlevel10k: 1:1.20.18-1
